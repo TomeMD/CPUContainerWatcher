@@ -1,0 +1,18 @@
+Bootstrap: docker
+From: debian:bullseye-slim
+
+%files
+  run-sysbench.sh /usr/local/bin/sysbench/
+
+%post
+  apt-get update && apt-get install -y sudo curl
+  echo 'APT::Sandbox::User "root";' > /etc/apt/apt.conf.d/99no-sandbox
+  curl -s https://packagecloud.io/install/repositories/akopytov/sysbench/script.deb.sh | bash
+  sudo apt -y install sysbench
+  chmod +x /usr/local/bin/sysbench/run-sysbench.sh
+
+%runscript
+  /usr/local/bin/sysbench/run-sysbench.sh "$@"
+
+%startscript
+  /usr/local/bin/sysbench/run-sysbench.sh "$@"

@@ -1,0 +1,8 @@
+Bootstrap: docker
+From: ljishen/fio:latest
+
+%runscript
+    fio "$@"
+
+%startscript
+    fio "$@"
