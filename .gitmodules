@@ -1,6 +1,3 @@
-[submodule "tools/CPUCollector"]
-	path = tools/CPUCollector
-	url = https://github.com/TomeMD/CPUCollector.git
 [submodule "tools/stress-system"]
 	path = tools/stress-system
 	url = https://github.com/TomeMD/stress-system.git
