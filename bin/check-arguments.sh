@@ -8,6 +8,11 @@ if [ "${OS_VIRT}" != "docker" ] && [ "${OS_VIRT}" != "apptainer" ]; then
   exit 1
 fi
 
+if [ "${OS_VIRT}" == "docker" ]; then
+  m_err "Container monitoring with Docker is not yet supported. We are working on it, in the meanwhile please use apptainer."
+  exit 1
+fi
+
 if ! [ -x "$(command -v ${OS_VIRT})" ]; then
   m_err "OS Virtualization Technology (${OS_VIRT}) is not installed"
   exit 1
