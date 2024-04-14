@@ -1,0 +1,4 @@
+influxdb_host: "montoxo.des.udc.es"
+influxdb_bucket: "public"
+influxdb_token: "MyToken"
+influxdb_org: "MyOrg"
