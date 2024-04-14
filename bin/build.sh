@@ -4,36 +4,60 @@ print_conf
 
 m_echo "Building monitoring environment"
 
+m_echo "Create MongoDB data directory and clean"
+mkdir -p "${MONGODB_HOME}"/data
+rm -rf "${MONGODB_HOME}"/data/*
+
+m_echo "Create Smartwatts output directory and clean"
+mkdir -p "${SMARTWATTS_HOME}"/output
+rm -rf "${SMARTWATTS_HOME}"/output/*
+
 # Build monitoring environment
 if [ "${OS_VIRT}" == "docker" ]; then
-  if [ -z "$(docker image ls -q glances)" ]; then
-    m_echo "Building Glances..."
-    docker build -t glances "${GLANCES_HOME}"
-  else
-    m_echo "Glances image already exists. Skipping build."
-  fi
-  if [ -z "$(docker image ls -q rapl)" ]; then
-    m_echo "Building RAPL..."
-    docker build -t rapl "${RAPL_HOME}"
-  else
-    m_echo "RAPL image already exists. Skipping build."
-  fi
+  #  if [ -z "$(docker image ls -q mongodb)" ]; then
+  #    m_echo "Building MongoDB..."
+  #    docker build -t mongodb "${MONGODB_HOME}"
+  #  else
+  #    m_echo "MongoDB image already exists. Skipping build."
+  #  fi
+  #  if [ -z "$(docker image ls -q hwpc-sensor)" ]; then
+  #    m_echo "Building HWPC Sensor..."
+  #    docker build -t hwpc-sensor "${HWPC_SENSOR_HOME}"
+  #  else
+  #    m_echo "HWPC Sensor image already exists. Skipping build."
+  #  fi
+  #  if [ -z "$(docker image ls -q smartwatts)" ]; then
+  #    m_echo "Building Smartwatts..."
+  #    docker build -t smartwatts "${SMARTWATTS_HOME}"
+  #  else
+  #    m_echo "Smartwatts image already exists. Skipping build."
+  #  fi
+  m_echo "Not yet supported. Nothing to do"
 elif [ "${OS_VIRT}" == "apptainer" ]; then
-  if [ ! -f "${GLANCES_HOME}"/glances.sif ]; then
-    m_echo "Building Glances..."
-    cd "${GLANCES_HOME}" && apptainer build -F glances.sif glances.def
+  if [ ! -f "${MONGODB_HOME}"/mongodb.sif ]; then
+    m_echo "Building MongoDB.."
+    cd "${MONGODB_HOME}" && apptainer build -F mongodb.sif mongodb.def
   else
-    m_echo "Glances image already exists. Skipping build."
+    m_echo "MongoDB image already exists. Skipping build."
   fi
-  if [ ! -f "${RAPL_HOME}"/rapl.sif ]; then
-    m_echo "Building RAPL..."
-    cd "${RAPL_HOME}" && apptainer build -F rapl.sif rapl.def
+  if [ ! -f "${HWPC_SENSOR_HOME}"/hwpc-sensor.sif ]; then
+    m_echo "Building HWPC Sensor.."
+    cd "${HWPC_SENSOR_HOME}" && apptainer build -F hwpc-sensor.sif hwpc-sensor.def
   else
-    m_echo "RAPL image already exists. Skipping build."
+    m_echo "HWPC Sensor image already exists. Skipping build."
+  fi
+  if [ ! -f "${SMARTWATTS_HOME}"/smartwatts.sif ]; then
+    m_echo "Building Smartwatts..."
+    cd "${SMARTWATTS_HOME}" && apptainer build -F smartwatts.sif smartwatts.def
+  else
+    m_echo "Smartwatts image already exists. Skipping build."
   fi
 fi
 chmod +x "${CPUFREQ_HOME}"/get-freq-core.sh
 
+
+# Build sender dependencies
+python3 -m pip install -r "${SENDERS_HOME}"/requirements.txt
 
 # Compile workloads
 if [ "${WORKLOAD}" == "stress-system" ]; then # STRESS-SYSTEM

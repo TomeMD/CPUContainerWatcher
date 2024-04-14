@@ -45,6 +45,11 @@ if [ "${SUPPORTED}" -eq  "0" ]; then
     exit 1
 fi
 
+if [ -z "${PYTHON_HOME}" ]; then
+  m_err "Python 3 is not installed. You must have Python 3 installed to use metrics senders."
+  exit 1
+fi
+
 if [ "${WORKLOAD}" == "spark" ]; then
   if [ ! -d "${SPARK_DATA_DIR}" ]; then
     m_err "Specified Spark Data directory doesn't exist: ${SPARK_DATA_DIR}"
@@ -52,10 +57,6 @@ if [ "${WORKLOAD}" == "spark" ]; then
   fi
   if [ -z "${JAVA_HOME}" ]; then
     m_err "JAVA_HOME is not set. You must set JAVA_HOME to use Spark"
-    exit 1
-  fi
-  if [ -z "${PYTHON_HOME}" ]; then
-    m_err "Python 3 is not installed. You must install Python 3 to use Spark"
     exit 1
   fi
 fi

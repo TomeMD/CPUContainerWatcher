@@ -7,10 +7,11 @@ export CONF_DIR="${GLOBAL_HOME}"/etc
 export TOOLS_DIR="${GLOBAL_HOME}"/tools
 export LOG_FILE=${LOG_DIR}/${WORKLOAD}.log
 
-# CPUCollector
-export GLANCES_HOME="${TOOLS_DIR}"/CPUCollector/glances
-export CPUFREQ_HOME="${TOOLS_DIR}"/CPUCollector/cpufreq
-export RAPL_HOME="${TOOLS_DIR}"/CPUCollector/rapl
+# Container monitoring environment
+export MONGODB_HOME="${TOOLS_DIR}"/mongodb
+export HWPC_SENSOR_HOME="${TOOLS_DIR}"/hwpc-sensor
+export SMARTWATTS_HOME="${TOOLS_DIR}"/smartwatts
+export SENDERS_HOME="${TOOLS_DIR}"/senders
 
 # stress-system
 export STRESS_HOME="${TOOLS_DIR}"/stress-system
