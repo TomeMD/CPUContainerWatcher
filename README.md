@@ -1,6 +1,6 @@
-# CPUPowerWatcher: Collect CPU Time Series while Running Workloads
+# ContainerPowerWatcher: Collect Container Time Series while Running Workloads
 
-Set of scripts to automate CPU monitoring and time series storage while running workloads. Options:
+Set of scripts to automate container monitoring and time series storage while running workloads. Options:
 
 # Quickstart
 
