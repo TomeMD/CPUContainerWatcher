@@ -1,4 +1,3 @@
 influxdb-client
 pandas
-json
-yaml
+pyyaml
