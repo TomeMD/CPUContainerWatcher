@@ -98,8 +98,12 @@ Stage: sensor-runner
 
 %runscript
     echo "Running HWPC Sensor..."
+    mkdir -p /reporting
+    rm -rf /reporting/*
     /entrypoint.sh --config-file /hwpc-config.json
 
 %startscript
     echo "Starting HWPC Sensor..."
+    mkdir -p /reporting
+    rm -rf /reporting/*
     /entrypoint.sh --config-file /hwpc-config.json

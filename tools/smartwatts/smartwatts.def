@@ -2,7 +2,10 @@ Bootstrap: docker
 From: python:3-slim
 
 %files
-    {{ smartwatts_path }}/config/smartwatts-config.json /smartwatts-config.json
+    ./config/smartwatts-config.json /smartwatts-config.json
+
+%environment
+    export SMARTWATTS_OUTPUT=/sensor-output
 
 %post
     export POWERAPI_REPOSITORY="https://github.com/powerapi-ng/powerapi.git"
@@ -32,8 +35,12 @@ From: python:3-slim
 
 %runscript
     echo "Starting SmartWatts..."
+    mkdir -p ${SMARTWATTS_OUTPUT}
+    rm -rf ${SMARTWATTS_OUTPUT}/*
     python3 -m smartwatts --config-file /smartwatts-config.json
 
 %startscript
     echo "Starting SmartWatts..."
+    mkdir -p ${SMARTWATTS_OUTPUT}
+    rm -rf ${SMARTWATTS_OUTPUT}/*
     python3 -m smartwatts  --config-file /smartwatts-config.json
