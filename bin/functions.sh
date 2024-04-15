@@ -74,6 +74,29 @@ function print_timestamp() {
 
 export -f print_timestamp
 
+function wait_for_mongodb() {
+	local RESPONSE=""
+	local TRIES=0
+	
+	MAX_TRIES=${1}
+	
+	m_echo "Waiting for MongoDB to be up..."
+	while [ -z "${RESPONSE}" ] && [ "${TRIES}" -lt "${MAX_TRIES}" ]; do
+		RESPONSE=$(curl "http://${MONGODB_HOST}:${MONGODB_PORT}" 2> /dev/null)
+		TRIES=$(( TRIES + 1 ))
+		m_echo "Number of tries: ${TRIES}"
+		sleep 1
+	done
+
+	if [ "${TRIES}" -ge "${MAX_TRIES}" ]; then
+		m_err "Max tries reached while trying to connect to MongoDB"
+		m_err "MongoDB server is unreachable"
+		exit 1
+	fi
+}
+
+export -f wait_for_mongodb
+
 function set_n_cores() {
   NUM_THREADS=$1
   CURRENT_CORES=""

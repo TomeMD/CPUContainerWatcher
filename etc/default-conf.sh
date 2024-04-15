@@ -14,4 +14,6 @@ export FIO_TARGET=/tmp/fio
 export SPARK_DATA_DIR="${GLOBAL_HOME}"/data
 export CUSTOM_TESTS=0
 export CUSTOM_TESTS_FILE="${GLOBAL_HOME}"/bin/test/custom-tests.sh
+export MONGODB_HOST=127.0.0.1
+export MONGODB_PORT=27017
 export SENSOR_REPORTING_DIR=/tmp/powerapi-sensor-reporting
