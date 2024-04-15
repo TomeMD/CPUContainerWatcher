@@ -10,6 +10,9 @@ mkdir -p "${MONGODB_HOME}"/data
 m_echo "Create Smartwatts output directory"
 mkdir -p "${SMARTWATTS_HOME}"/output
 
+m_echo "Create HWPC Sensor reporting directory"
+mkdir -p "${SENSOR_REPORTING_DIR}"
+
 # Build monitoring environment
 if [ "${OS_VIRT}" == "docker" ]; then
   #  if [ -z "$(docker image ls -q mongodb)" ]; then
