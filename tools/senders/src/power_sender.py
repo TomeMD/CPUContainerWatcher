@@ -7,7 +7,7 @@ from datetime import datetime, timezone, timedelta
 from influxdb_client import InfluxDBClient
 from influxdb_client.client.write_api import SYNCHRONOUS
 
-from apptainer.ApptainerContainersList import ApptainerContainersList
+from src.apptainer.ApptainerHandler import ApptainerHandler
 
 POLLING_FREQUENCY = 5
 
@@ -16,6 +16,19 @@ SCRIPT_DIR = os.path.dirname(SCRIPT_PATH)
 SENDERS_DIR = os.path.dirname(SCRIPT_DIR)
 INFLUXDB_CONFIG_FILE = f"{SENDERS_DIR}/influxdb/config.yml"
 
+
+def read_cgroup_file_value(path):
+    try:
+        if os.path.isfile(path) and os.access(path, os.R_OK):
+            with open(path, 'r') as f:
+                value = int(f.readline().strip().replace("\n", ""))
+            return value
+        else:
+            print(f"Couldn't access file: {path}")
+            return None
+    except IOError as e:
+        print(f"Error while reading {path}: {str(e)}")
+        return None
 
 if __name__ == "__main__":
 
@@ -28,9 +41,7 @@ if __name__ == "__main__":
         influxdb_config = yaml.load(f, Loader=yaml.FullLoader)
 
     # Get running containers on node
-    containers_list = ApptainerContainersList()
-    containers_list.init_container_names_by_pid()
-    print(containers_list.get_container_list())
+    apptainer_handler = ApptainerHandler(privileged=True)
 
     # Get current timestamp UTC
     start_timestamp = datetime.now(timezone.utc)
@@ -45,46 +56,44 @@ if __name__ == "__main__":
     while True:
         iter_count = {"targets": 0, "lines": 0}
         t_start = time.perf_counter_ns()
-        for target_dir in os.listdir(smartwatts_output):
-            target_name = target_dir[7:]  # Remove "sensor-"
 
-            # Ignore other running processes
-            if not target_name.startswith("apptainer"):
-                continue
+        for container in apptainer_handler.get_running_containers_list():
 
-            # Get container name from pid
-            pid = int(target_name[10:])
-            target_name = containers_list.get_container_name_by_pid(pid)
-            if target_name is None:
-                continue
+            cont_pid = container["pid"]
+            cont_name = container["name"]
 
             # If target is not registered, initialize it
-            if target_name not in output_file:
-                print(f"Found new target with name {target_name}. Registered.")
-                output_file[target_name] = f"{smartwatts_output}/{target_dir}/PowerReport.csv"
-                last_read_position[target_name] = 0
+            if cont_pid not in output_file:
+                print(f"Found new target with name {cont_name} and pid {cont_pid}. Registered.")
+                output_file[cont_pid] = f"{smartwatts_output}/sensor-apptainer-{cont_pid}/PowerReport.csv"
+                last_read_position[cont_pid] = 0
+
+            if not os.path.isfile(output_file[cont_pid]) or not os.access(output_file[cont_pid], os.R_OK):
+                print(f"Couldn't access file from target {container['name']}: {output_file[cont_pid]}")
+                continue
 
             # Read target output
-            with open(output_file[target_name], 'r') as file:
+            with open(output_file[cont_pid], 'r') as file:
                 # If file is empty, skip
-                if os.path.getsize(output_file[target_name]) <= 0:
+                if os.path.getsize(output_file[cont_pid]) <= 0:
+                    print(f"Target {cont_name} file is empty: {output_file[cont_pid]}")
                     continue
 
                 # Go to last read position
-                file.seek(last_read_position[target_name])
+                file.seek(last_read_position[cont_pid])
 
                 # Skip header
-                if last_read_position[target_name] == 0:
+                if last_read_position[cont_pid] == 0:
                     next(file)
 
                 lines = file.readlines()
                 if len(lines) == 0:
-                    print("There aren't new lines to process for target {0}".format(target_name))
+                    print(f"There aren't new lines to process for target {cont_name}")
                     continue
 
                 iter_count["targets"] += 1
                 iter_count["lines"] += len(lines)
-                last_read_position[target_name] = file.tell()
+                last_read_position[cont_pid] = file.tell()
 
                 # Gather data from target output
                 bulk_data = []
@@ -93,8 +102,8 @@ if __name__ == "__main__":
                     fields = line.strip().split(',')
                     num_fields = len(fields)
                     if num_fields < 4:
-                        raise Exception("Missing some fields in SmartWatts output for "
-                                        "target {0} ({1} out of 4 expected fields)".format(target_name, num_fields))
+                        raise Exception(f"Missing some fields in SmartWatts output for "
+                                        f"target {cont_name} ({num_fields} out of 4 expected fields)")
                     # SmartWatts timestamps are 2 hours ahead from UTC (UTC-02:00)
                     # Normalize timestamps to UTC (actually UTC-02:00) and add 2 hours to get real UTC
                     data = {
@@ -114,7 +123,7 @@ if __name__ == "__main__":
                     # Format data to InfluxDB line protocol
                     target_metrics = []
                     for _, row in agg_data .iterrows():
-                        data = f"power,host={target_name} value={row['value']} {int(row['timestamp'].timestamp() * 1e9)}"
+                        data = f"power,host={cont_name} value={row['value']} {int(row['timestamp'].timestamp() * 1e9)}"
                         target_metrics.append(data)
 
                     # Send data to InfluxDB
@@ -125,5 +134,5 @@ if __name__ == "__main__":
 
         t_stop = time.perf_counter_ns()
         delay = (t_stop - t_start) / 1e9
-        print("[Iteration Completed] Processed {0} targets and {1} lines causing a delay of {2} seconds".format(iter_count["targets"], iter_count["lines"], delay))
+        print(f"[{datetime.now()}] Processed {iter_count['targets']} targets and {iter_count['lines']} lines causing a delay of {delay} seconds")
         time.sleep(POLLING_FREQUENCY - delay)
