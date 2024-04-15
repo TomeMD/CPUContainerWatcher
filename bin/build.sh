@@ -4,13 +4,11 @@ print_conf
 
 m_echo "Building monitoring environment"
 
-m_echo "Create MongoDB data directory and clean"
+m_echo "Create MongoDB data directory"
 mkdir -p "${MONGODB_HOME}"/data
-rm -rf "${MONGODB_HOME}"/data/*
 
-m_echo "Create Smartwatts output directory and clean"
+m_echo "Create Smartwatts output directory"
 mkdir -p "${SMARTWATTS_HOME}"/output
-rm -rf "${SMARTWATTS_HOME}"/output/*
 
 # Build monitoring environment
 if [ "${OS_VIRT}" == "docker" ]; then
@@ -53,8 +51,6 @@ elif [ "${OS_VIRT}" == "apptainer" ]; then
     m_echo "Smartwatts image already exists. Skipping build."
   fi
 fi
-chmod +x "${CPUFREQ_HOME}"/get-freq-core.sh
-
 
 # Build sender dependencies
 python3 -m pip install -r "${SENDERS_HOME}"/requirements.txt

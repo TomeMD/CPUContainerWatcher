@@ -122,9 +122,9 @@ function run_stress-system() {
 	if [ "${OS_VIRT}" == "docker" ]; then
 		docker run --rm --name stress-system -it stress-system ${OTHER_OPTIONS}-l "${LOAD}" -s "${STRESSORS}" --cpu-load-types "${LOAD_TYPES}" -c "${CURRENT_CORES}" -t 4m >> "${LOG_FILE}" 2>&1
 	else
-		apptainer instance start "${STRESS_CONTAINER_DIR}"/stress.sif stress ${OTHER_OPTIONS}-l "${LOAD}" -s "${STRESSORS}" --cpu-load-types "${LOAD_TYPES}" -c "${CURRENT_CORES}" -t 4m >> "${LOG_FILE}" 2>&1
+		sudo apptainer instance start -C "${STRESS_CONTAINER_DIR}"/stress.sif stress ${OTHER_OPTIONS}-l "${LOAD}" -s "${STRESSORS}" --cpu-load-types "${LOAD_TYPES}" -c "${CURRENT_CORES}" -t 4m >> "${LOG_FILE}" 2>&1
     sleep 240
-    apptainer instance stop stress
+    sudo apptainer instance stop stress
 	fi
 	print_timestamp "STRESS-TEST (CORES = ${CURRENT_CORES}) STOP"
 	sleep 15
@@ -264,10 +264,8 @@ function run_seq_experiment() {
   CURRENT_CORES="0"
   LOAD=50
 	while [ "${LOAD}" -le "100" ]; do
-    start_cpufreq_core
     "${TEST_FUNCTION}"
     idle_cpu
-    stop_cpufreq_core
     LOAD=$((LOAD + 50))
   done
 }
@@ -290,10 +288,8 @@ function run_experiment() {
       else
           CURRENT_CORES+=",${CORES_ARRAY[i]},${CORES_ARRAY[i+1]}"
       fi
-	    start_cpufreq_core
 	    "${TEST_FUNCTION}"
 	    idle_cpu
-	    stop_cpufreq_core
 	    LOAD=$((LOAD + 200))
 	done
 	local END_TEST=$(date +%s%N)
