@@ -2,11 +2,14 @@
 
 m_echo "Closing environment"
 if [ "$OS_VIRT" == "docker" ]; then
-	docker stop rapl glances
-	docker rm rapl glances
+	docker stop smartwatts hwpc-sensor mongodb
+	docker rm smartwatts hwpc-sensor mongodb
 else
-	sudo apptainer instance stop rapl && sudo apptainer instance stop glances
+	sudo apptainer instance stop smartwatts && sudo apptainer instance stop hwpc-sensor && sudo apptainer instance stop mongodb
 fi
+
+tmux kill-session -t "power_sender"
+tmux kill-session -t "usage_sender"
 
 if [ "${ADD_IO_NOISE}" -ne 0 ]; then
   if [ "${OS_VIRT}" == "docker" ]; then
