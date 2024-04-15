@@ -46,6 +46,6 @@ class ApptainerContainersList:
 
             # If container is not found and max tries not exceeded, update containers list
             if self.container_not_found_times[pid] < MAX_FOUND_TRIES:
-                self.update_container_names_by_pid()
+                self._update_container_names_by_pid()
 
             return None
