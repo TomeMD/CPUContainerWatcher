@@ -1,4 +1,5 @@
 import os
+import sys
 import time
 import yaml
 from datetime import datetime, timezone, timedelta
@@ -33,6 +34,11 @@ def read_cgroup_file_value(path):
 
 
 if __name__ == "__main__":
+
+    if len(sys.argv) < 2:
+        raise Exception("Missing some arguments: usage_sender.py <INFLUXDB_BUCKET>")
+
+    influxdb_bucket = sys.argv[1]
 
     if not os.path.exists(CGROUP_BASE_PATH):
         print(f"{CGROUP_BASE_PATH} doesn't exist. Make sure you are using cgroups v1"
@@ -99,7 +105,7 @@ if __name__ == "__main__":
         # If current batch has at least MIN_BATCH_SIZE data points, send and clear the batch
         if len(current_batch) >= MIN_BATCH_SIZE:
             try:
-                client.write_api(write_options=SYNCHRONOUS).write(bucket=influxdb_config['influxdb_bucket'], record=current_batch)
+                client.write_api(write_options=SYNCHRONOUS).write(bucket=influxdb_bucket, record=current_batch)
             except InfluxDBError as e:
                 print(f"Error while sending data to InfluxDB: {e}")
             except Exception as e:

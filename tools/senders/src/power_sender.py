@@ -32,10 +32,11 @@ def read_cgroup_file_value(path):
 
 if __name__ == "__main__":
 
-    if len(sys.argv) < 2:
-        raise Exception("Missing some arguments: send_power_opentsdb.py <SMARTWATTS_OUTPUT>")
+    if len(sys.argv) < 3:
+        raise Exception("Missing some arguments: power_sender.py <INFLUXDB_BUCKET> <SMARTWATTS_OUTPUT>")
 
-    smartwatts_output = sys.argv[1]
+    influxdb_bucket = sys.argv[1]
+    smartwatts_output = sys.argv[2]
 
     with open(INFLUXDB_CONFIG_FILE, "r") as f:
         influxdb_config = yaml.load(f, Loader=yaml.FullLoader)
@@ -128,7 +129,7 @@ if __name__ == "__main__":
 
                     # Send data to InfluxDB
                     try:
-                        client.write_api(write_options=SYNCHRONOUS).write(bucket=influxdb_config['influxdb_bucket'], record=target_metrics)
+                        client.write_api(write_options=SYNCHRONOUS).write(bucket=influxdb_bucket, record=target_metrics)
                     except Exception as e:
                         print(f"Error sending data to InfluxDB: {e}")
 

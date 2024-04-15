@@ -4,10 +4,12 @@ export PYTHONPATH=${PYTHONPATH}:${SCRIPT_DIR}
 
 if [ -z "$1" ]
 then
-      echo "1 arguments is needed"
-      echo "1 -> SmartWatts output directory"
+      echo "2 arguments are needed"
+      echo "1 -> InfluxDB Bucket"
+      echo "2 -> SmartWatts output directory"
       exit 1
 fi
-SMARTWATTS_OUTPUT=${1}
+INFLUXDB_BUCKET=${1}
+SMARTWATTS_OUTPUT=${2}
 
-python3 "${SCRIPT_DIR}"/src/power_sender.py "${SMARTWATTS_OUTPUT}"
+python3 "${SCRIPT_DIR}"/src/power_sender.py "${INFLUXDB_BUCKET}" "${SMARTWATTS_OUTPUT}"
