@@ -146,9 +146,8 @@ function run_stress-system() {
 		docker run --rm --name stress-system -it stress-system ${OTHER_OPTIONS}-l "${LOAD}" -s "${STRESSORS}" --cpu-load-types "${LOAD_TYPES}" -c "${CURRENT_CORES}" -t 4m >> "${LOG_FILE}" 2>&1
 	else
 		sudo apptainer instance start -C "${STRESS_CONTAINER_DIR}"/stress.sif stress ${OTHER_OPTIONS}-l "${LOAD}" -s "${STRESSORS}" --cpu-load-types "${LOAD_TYPES}" -c "${CURRENT_CORES}" -t 4m >> "${LOG_FILE}" 2>&1
-    sleep 240
-    sudo apptainer instance stop stress
 	fi
+	sleep 240
 	print_timestamp "STRESS-TEST (CORES = ${CURRENT_CORES}) STOP"
 	sleep 15
 }
@@ -277,7 +276,8 @@ function idle_cpu() {
 	print_timestamp "IDLE START"
 	sleep 30
 	print_timestamp "IDLE STOP"
-	sleep 5
+	sudo apptainer instance stop stress
+	sleep 15
 }
 
 export -f idle_cpu
@@ -303,7 +303,7 @@ function run_experiment() {
 
 	local START_TEST=$(date +%s%N)
 	run_seq_experiment "${TEST_FUNCTION}"
-  CURRENT_CORES=""
+  	CURRENT_CORES=""
 	LOAD=200
 	for ((i = 0; i < ${#CORES_ARRAY[@]}; i += 2)); do
       if [ -z "${CURRENT_CORES}" ]; then
