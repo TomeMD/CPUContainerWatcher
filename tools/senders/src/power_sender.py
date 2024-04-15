@@ -13,7 +13,8 @@ POLLING_FREQUENCY = 5
 
 SCRIPT_PATH = os.path.abspath(__file__)
 SCRIPT_DIR = os.path.dirname(SCRIPT_PATH)
-INFLUXDB_CONFIG_FILE = f"{SCRIPT_DIR}/influxdb/config.yml"
+SENDERS_DIR = os.path.dirname(SCRIPT_DIR)
+INFLUXDB_CONFIG_FILE = f"{SENDERS_DIR}/influxdb/config.yml"
 
 
 if __name__ == "__main__":
@@ -42,7 +43,7 @@ if __name__ == "__main__":
     output_file = {}
     last_read_position = {}
     while True:
-        new_targets = False
+        iter_count = {"targets": 0, "lines": 0}
         t_start = time.perf_counter_ns()
         for target_dir in os.listdir(smartwatts_output):
             target_name = target_dir[7:]  # Remove "sensor-"
@@ -81,7 +82,8 @@ if __name__ == "__main__":
                     print("There aren't new lines to process for target {0}".format(target_name))
                     continue
 
-                print("Processing {0} lines for target {1}".format(len(lines), target_name))
+                iter_count["targets"] += 1
+                iter_count["lines"] += len(lines)
                 last_read_position[target_name] = file.tell()
 
                 # Gather data from target output
@@ -112,7 +114,7 @@ if __name__ == "__main__":
                     # Format data to InfluxDB line protocol
                     target_metrics = []
                     for _, row in agg_data .iterrows():
-                        data = f"power,host={target_name} value={row['value']} {row['timestamp'].strftime('%Y-%m-%dT%H:%M:%SZ')}"
+                        data = f"power,host={target_name} value={row['value']} {int(row['timestamp'].timestamp() * 1e9)}"
                         target_metrics.append(data)
 
                     # Send data to InfluxDB
@@ -123,4 +125,5 @@ if __name__ == "__main__":
 
         t_stop = time.perf_counter_ns()
         delay = (t_stop - t_start) / 1e9
+        print("[Iteration Completed] Processed {0} targets and {1} lines causing a delay of {2} seconds".format(iter_count["targets"], iter_count["lines"], delay))
         time.sleep(POLLING_FREQUENCY - delay)

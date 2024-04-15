@@ -7,15 +7,16 @@ from influxdb_client import InfluxDBClient
 from influxdb_client.client.exceptions import InfluxDBError
 from influxdb_client.client.write_api import SYNCHRONOUS
 
-from apptainer.ApptainerContainersList import ApptainerContainersList
+from src.apptainer.ApptainerContainersList import ApptainerContainersList
 
 POLLING_FREQUENCY = 5
-MIN_BATCH_SIZE = 50
+MIN_BATCH_SIZE = 10
 
 CGROUP_BASE_PATH = "/sys/fs/cgroup/cpu/system.slice/"
 SCRIPT_PATH = os.path.abspath(__file__)
 SCRIPT_DIR = os.path.dirname(SCRIPT_PATH)
-INFLUXDB_CONFIG_FILE = f"{SCRIPT_DIR}/influxdb/config.yml"
+SENDERS_DIR = os.path.dirname(SCRIPT_DIR)
+INFLUXDB_CONFIG_FILE = f"{SENDERS_DIR}/influxdb/config.yml"
 
 
 def read_cgroup_file_value(path):
@@ -26,8 +27,11 @@ def read_cgroup_file_value(path):
             return value
         else:
             print(f"Couldn't access file: {path}")
+            return None
     except IOError as e:
         print(f"Error while reading {path}: {str(e)}")
+        return None
+
 
 
 if __name__ == "__main__":
@@ -50,41 +54,59 @@ if __name__ == "__main__":
 
     # Initialize t_stop to compute delay in first iteration properly
     t_stop = time.perf_counter_ns()
-
     current_batch = []
     while True:
-        new_targets = False
-        for target_dir in os.listdir(CGROUP_BASE_PATH):
+        # Ignore other running processes
+        filtered_dirs = [d for d in os.listdir(CGROUP_BASE_PATH) if re.match(r"apptainer-\d+\.scope", d)]
 
-            # Ignore other running processes
-            if not re.match(r"apptainer-.*\.scope", target_dir):
-                continue
-
+        # Filter and initialize valid targets to process
+        valid_targets = []
+        for target_dir in filtered_dirs:
             # Get container name from pid
-            pid = re.search(r'\d+', target_dir).group()
+            pid = int(re.search(r'\d+', target_dir).group())
             target_name = containers_list.get_container_name_by_pid(pid)
-            if target_name is None:
+            if target_name is not None:
+                valid_targets.append({"name": target_name, "dir": target_dir})
+
+        # Setup start counters
+        for target in valid_targets:
+            target["start"] = time.perf_counter_ns()
+            target["user_start"] = read_cgroup_file_value(f"{CGROUP_BASE_PATH}/{target['dir']}/cpuacct.usage_user")
+            target["sys_start"] = read_cgroup_file_value(f"{CGROUP_BASE_PATH}/{target['dir']}/cpuacct.usage_sys")
+            if target["user_start"] is None or target["sys_start"] is None:
+                print(f"Target {target['name']} doesn't exist, it will be removed")
+                valid_targets.remove(target)
+
+
+        t_start = time.perf_counter_ns()
+
+        # This value represents the total delay since t_stop from previous iteration was computed
+        delay = (t_start - t_stop) / 1e9
+        time.sleep(POLLING_FREQUENCY - delay)
+
+        t_stop = time.perf_counter_ns()
+        timestamp = int(datetime.now(timezone.utc).timestamp() * 1e9)
+
+        #Setup stop counters
+        for target in valid_targets:
+            target["stop"] = time.perf_counter_ns()
+            target["user_stop"] = read_cgroup_file_value(f"{CGROUP_BASE_PATH}/{target['dir']}/cpuacct.usage_user")
+            target["sys_stop"] = read_cgroup_file_value(f"{CGROUP_BASE_PATH}/{target['dir']}/cpuacct.usage_sys")
+
+            if target["user_stop"] is None or target["sys_stop"] is None:
+                print(f"Target {target['name']} doesn't exist, it will be removed")
+                valid_targets.remove(target)
                 continue
 
-            t_start = time.perf_counter_ns()
-            # This value represents the total delay since t_stop from previous iteration was computed
-            delay = (t_start - t_stop) / 1e9
-            user_time_start = read_cgroup_file_value(f"{CGROUP_BASE_PATH}/cpuacct.usage_user")
-            system_time_start = read_cgroup_file_value(f"{CGROUP_BASE_PATH}/cpuacct.usage_sys")
+            # Process target data ¡¡¡VOY POR AQUI!!!
+            elapsed_time = target["stop"] - target["start"]
+            user_usage = ((target["user_stop"] - target["user_start"]) / elapsed_time) * 100
+            system_usage = ((target["sys_stop"] - target["sys_start"]) / elapsed_time) * 100
 
-            time.sleep(POLLING_FREQUENCY - delay)
-
-            t_stop = time.perf_counter_ns()
-            user_time_stop = read_cgroup_file_value(f"{CGROUP_BASE_PATH}/cpuacct.usage_user")
-            system_time_stop = read_cgroup_file_value(f"{CGROUP_BASE_PATH}/cpuacct.usage_sys")
-
-            elapsed_time = t_stop - t_start
-            user_usage = ((user_time_stop - user_time_start) / elapsed_time) * 100
-            system_usage = ((system_time_stop - system_time_start) / elapsed_time) * 100
-            timestamp = datetime.now(timezone.utc) + timedelta(hours=2)  # UTC+02:00
-
-            data = f"usage,host={target_name} user={user_usage} system={system_usage}  {timestamp}"
+            data = f"usage,host={target['name']} user={user_usage},system={system_usage} {timestamp}"
             current_batch.append(data)
+
+        print("[Iteration Completed] Current batch size is {0}. Last iteration delay: {1} seconds".format(len(current_batch), delay))
 
         # If current batch has at least MIN_BATCH_SIZE data points, send and clear the batch
         if len(current_batch) >= MIN_BATCH_SIZE:
