@@ -9,7 +9,7 @@ from influxdb_client.client.write_api import SYNCHRONOUS
 
 from src.apptainer.ApptainerHandler import ApptainerHandler
 
-POLLING_FREQUENCY = 5
+POLLING_FREQUENCY = 2
 MIN_BATCH_SIZE = 10
 
 CGROUP_BASE_PATH = "/sys/fs/cgroup/cpu/system.slice/"

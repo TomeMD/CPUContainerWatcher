@@ -9,7 +9,7 @@ from influxdb_client.client.write_api import SYNCHRONOUS
 
 from src.apptainer.ApptainerHandler import ApptainerHandler
 
-POLLING_FREQUENCY = 5
+POLLING_FREQUENCY = 2
 
 SCRIPT_PATH = os.path.abspath(__file__)
 SCRIPT_DIR = os.path.dirname(SCRIPT_PATH)
