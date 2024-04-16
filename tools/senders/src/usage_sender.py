@@ -47,7 +47,7 @@ if __name__ == "__main__":
 
     create_dir(LOG_DIR)
     clean_log_file(LOG_DIR, LOG_FILE)
-    logging.basicConfig(filename=f'{SENDERS_DIR}/usage_sender.log', level=logging.INFO, format='%(levelname)s (%(name)s): %(asctime)s %(message)s')
+    logging.basicConfig(filename=LOG_FILE, level=logging.INFO, format='%(levelname)s (%(name)s): %(asctime)s %(message)s')
 
     if not os.path.exists(CGROUP_BASE_PATH):
         logger.error(f"{CGROUP_BASE_PATH} doesn't exist. Make sure you are using cgroups v1"
@@ -125,6 +125,6 @@ if __name__ == "__main__":
                     logger.error(f"Unexpected error while sending data to InfluxDB: {e}")
                 finally:
                     current_batch.clear()
-                    
+
         except Exception as e:
             logger.error(f"Unexpected error: {str(e)}")

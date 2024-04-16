@@ -45,7 +45,7 @@ if __name__ == "__main__":
 
     create_dir(LOG_DIR)
     clean_log_file(LOG_DIR, LOG_FILE)
-    logging.basicConfig(filename=f'{SENDERS_DIR}/log/power_sender.log', level=logging.INFO, format='%(levelname)s (%(name)s): %(asctime)s %(message)s')
+    logging.basicConfig(filename=LOG_FILE, level=logging.INFO, format='%(levelname)s (%(name)s): %(asctime)s %(message)s')
 
     with open(INFLUXDB_CONFIG_FILE, "r") as f:
         influxdb_config = yaml.load(f, Loader=yaml.FullLoader)
