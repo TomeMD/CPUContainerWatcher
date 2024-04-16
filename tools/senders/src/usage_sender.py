@@ -2,12 +2,14 @@ import os
 import sys
 import time
 import yaml
+import logging
 from datetime import datetime, timezone, timedelta
 from influxdb_client import InfluxDBClient
 from influxdb_client.client.exceptions import InfluxDBError
 from influxdb_client.client.write_api import SYNCHRONOUS
 
 from src.apptainer.ApptainerHandler import ApptainerHandler
+from src.utils.MyUtils import create_dir, clean_log_file
 
 POLLING_FREQUENCY = 2
 MIN_BATCH_SIZE = 10
@@ -17,7 +19,10 @@ SCRIPT_PATH = os.path.abspath(__file__)
 SCRIPT_DIR = os.path.dirname(SCRIPT_PATH)
 SENDERS_DIR = os.path.dirname(SCRIPT_DIR)
 INFLUXDB_CONFIG_FILE = f"{SENDERS_DIR}/influxdb/config.yml"
+LOG_DIR = f"{SENDERS_DIR}/log"
+LOG_FILE = f"{LOG_DIR}/usage_sender.log"
 
+logger = logging.getLogger("usage_sender")
 
 def read_cgroup_file_value(path):
     try:
@@ -26,10 +31,10 @@ def read_cgroup_file_value(path):
                 value = int(f.readline().strip().replace("\n", ""))
             return value
         else:
-            print(f"Couldn't access file: {path}")
+            logger.error(f"Couldn't access file: {path}")
             return None
     except IOError as e:
-        print(f"Error while reading {path}: {str(e)}")
+        logger.error(f"Error while reading {path}: {str(e)}")
         return None
 
 
@@ -40,9 +45,14 @@ if __name__ == "__main__":
 
     influxdb_bucket = sys.argv[1]
 
+    create_dir(LOG_DIR)
+    clean_log_file(LOG_DIR, LOG_FILE)
+    logging.basicConfig(filename=f'{SENDERS_DIR}/usage_sender.log', level=logging.INFO, format='%(levelname)s (%(name)s): %(asctime)s %(message)s')
+
     if not os.path.exists(CGROUP_BASE_PATH):
-        print(f"{CGROUP_BASE_PATH} doesn't exist. Make sure you are using cgroups v1"
+        logger.error(f"{CGROUP_BASE_PATH} doesn't exist. Make sure you are using cgroups v1"
               " and there is at least one apptainer container running")
+        exit(1)
 
     with open(INFLUXDB_CONFIG_FILE, "r") as f:
         influxdb_config = yaml.load(f, Loader=yaml.FullLoader)
@@ -58,57 +68,63 @@ if __name__ == "__main__":
     t_stop = time.perf_counter_ns()
     current_batch = []
     while True:
+        try:
+            # Filter and initialize valid targets to process
+            valid_targets = []
+            for container in apptainer_handler.get_running_containers_list():
+                target_dir = f"{CGROUP_BASE_PATH}/apptainer-{container['pid']}.scope"
+                if os.path.isdir(target_dir) and os.access(target_dir, os.R_OK):
+                    valid_targets.append({"name": container["name"], "dir": target_dir})
 
-        # Filter and initialize valid targets to process
-        valid_targets = []
-        for container in apptainer_handler.get_running_containers_list():
-            target_dir = f"{CGROUP_BASE_PATH}/apptainer-{container['pid']}.scope"
-            if os.path.isdir(target_dir) and os.access(target_dir, os.R_OK):
-                valid_targets.append({"name": container["name"], "dir": target_dir})
+            # Setup start counters
+            for target in valid_targets:
+                target["start"] = time.perf_counter_ns()
+                target["user_start"] = read_cgroup_file_value(f"{target['dir']}/cpuacct.usage_user")
+                target["sys_start"] = read_cgroup_file_value(f"{target['dir']}/cpuacct.usage_sys")
+                if target["user_start"] is None or target["sys_start"] is None:
+                    valid_targets.remove(target)
 
-        # Setup start counters
-        for target in valid_targets:
-            target["start"] = time.perf_counter_ns()
-            target["user_start"] = read_cgroup_file_value(f"{target['dir']}/cpuacct.usage_user")
-            target["sys_start"] = read_cgroup_file_value(f"{target['dir']}/cpuacct.usage_sys")
-            if target["user_start"] is None or target["sys_start"] is None:
-                valid_targets.remove(target)
+            t_start = time.perf_counter_ns()
 
-        t_start = time.perf_counter_ns()
+            # This value represents the total delay since t_stop from previous iteration was computed
+            delay = (t_start - t_stop) / 1e9
+            if delay > POLLING_FREQUENCY:
+                logger.warning(f"High delay ({delay}) causing negative sleep times. Waiting until the next {POLLING_FREQUENCY}s cycle")
+                delay = delay % POLLING_FREQUENCY
+            time.sleep(POLLING_FREQUENCY - delay)
 
-        # This value represents the total delay since t_stop from previous iteration was computed
-        delay = (t_start - t_stop) / 1e9
-        time.sleep(POLLING_FREQUENCY - delay)
+            t_stop = time.perf_counter_ns()
+            timestamp = int(datetime.now(timezone.utc).timestamp() * 1e9)
 
-        t_stop = time.perf_counter_ns()
-        timestamp = int(datetime.now(timezone.utc).timestamp() * 1e9)
+            #Setup stop counters
+            for target in valid_targets:
+                target["stop"] = time.perf_counter_ns()
+                target["user_stop"] = read_cgroup_file_value(f"{target['dir']}/cpuacct.usage_user")
+                target["sys_stop"] = read_cgroup_file_value(f"{target['dir']}/cpuacct.usage_sys")
+                if target["user_stop"] is None or target["sys_stop"] is None:
+                    valid_targets.remove(target)
+                    continue
 
-        #Setup stop counters
-        for target in valid_targets:
-            target["stop"] = time.perf_counter_ns()
-            target["user_stop"] = read_cgroup_file_value(f"{target['dir']}/cpuacct.usage_user")
-            target["sys_stop"] = read_cgroup_file_value(f"{target['dir']}/cpuacct.usage_sys")
-            if target["user_stop"] is None or target["sys_stop"] is None:
-                valid_targets.remove(target)
-                continue
+                # Process target data
+                elapsed_time = target["stop"] - target["start"]
+                user_usage = ((target["user_stop"] - target["user_start"]) / elapsed_time) * 100
+                system_usage = ((target["sys_stop"] - target["sys_start"]) / elapsed_time) * 100
 
-            # Process target data
-            elapsed_time = target["stop"] - target["start"]
-            user_usage = ((target["user_stop"] - target["user_start"]) / elapsed_time) * 100
-            system_usage = ((target["sys_stop"] - target["sys_start"]) / elapsed_time) * 100
+                data = f"usage,host={target['name']} user={user_usage},system={system_usage} {timestamp}"
+                current_batch.append(data)
 
-            data = f"usage,host={target['name']} user={user_usage},system={system_usage} {timestamp}"
-            current_batch.append(data)
+            logger.info(f"Current batch size is {len(current_batch)}. Last iteration delay: {delay} seconds")
 
-        print(f"[Iteration Completed] Current batch size is {len(current_batch)}. Last iteration delay: {delay} seconds")
-
-        # If current batch has at least MIN_BATCH_SIZE data points, send and clear the batch
-        if len(current_batch) >= MIN_BATCH_SIZE:
-            try:
-                client.write_api(write_options=SYNCHRONOUS).write(bucket=influxdb_bucket, record=current_batch)
-            except InfluxDBError as e:
-                print(f"Error while sending data to InfluxDB: {e}")
-            except Exception as e:
-                print(f"Unexpected error while sending data to InfluxDB: {e}")
-            finally:
-                current_batch.clear()
+            # If current batch has at least MIN_BATCH_SIZE data points, send and clear the batch
+            if len(current_batch) >= MIN_BATCH_SIZE:
+                try:
+                    client.write_api(write_options=SYNCHRONOUS).write(bucket=influxdb_bucket, record=current_batch)
+                except InfluxDBError as e:
+                    logger.error(f"Error while sending data to InfluxDB: {e}")
+                except Exception as e:
+                    logger.error(f"Unexpected error while sending data to InfluxDB: {e}")
+                finally:
+                    current_batch.clear()
+                    
+        except Exception as e:
+            logger.error(f"Unexpected error: {str(e)}")
