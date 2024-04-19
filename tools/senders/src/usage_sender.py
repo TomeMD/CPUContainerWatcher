@@ -3,7 +3,7 @@ import sys
 import time
 import yaml
 import logging
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from influxdb_client import InfluxDBClient
 from influxdb_client.client.exceptions import InfluxDBError
 from influxdb_client.client.write_api import SYNCHRONOUS
@@ -13,6 +13,8 @@ from src.utils.MyUtils import create_dir, clean_log_file
 
 POLLING_FREQUENCY = 2
 MIN_BATCH_SIZE = 10
+TICKS_PER_SECOND = os.sysconf(os.sysconf_names['SC_CLK_TCK'])
+NS_PER_TICK = 1e9 / TICKS_PER_SECOND
 
 CGROUP_BASE_PATH = "/sys/fs/cgroup/cpu/system.slice/"
 SCRIPT_PATH = os.path.abspath(__file__)
@@ -24,12 +26,17 @@ LOG_FILE = f"{LOG_DIR}/usage_sender.log"
 
 logger = logging.getLogger("usage_sender")
 
-def read_cgroup_file_value(path):
+
+def read_cgroup_file_stat(target_dir):
+    path = f"{target_dir}/cpuacct.stat"
+    values = {"user": 0, "system": 0}
     try:
         if os.path.isfile(path) and os.access(path, os.R_OK):
             with open(path, 'r') as f:
-                value = int(f.readline().strip().replace("\n", ""))
-            return value
+                for line in f:
+                    fields = line.split()
+                    values[fields[0]] = int(fields[1])
+            return values
         else:
             logger.error(f"Couldn't access file: {path}")
             return None
@@ -79,9 +86,10 @@ if __name__ == "__main__":
             # Setup start counters
             for target in valid_targets:
                 target["start"] = time.perf_counter_ns()
-                target["user_start"] = read_cgroup_file_value(f"{target['dir']}/cpuacct.usage_user")
-                target["sys_start"] = read_cgroup_file_value(f"{target['dir']}/cpuacct.usage_sys")
-                if target["user_start"] is None or target["sys_start"] is None:
+                tick_values = read_cgroup_file_stat(target["dir"])
+                target["user_ticks_start"] = tick_values["user"]
+                target["sys_ticks_start"] = tick_values["system"]
+                if target["user_ticks_start"] is None or target["sys_ticks_start"] is None:
                     valid_targets.remove(target)
 
             t_start = time.perf_counter_ns()
@@ -99,16 +107,17 @@ if __name__ == "__main__":
             #Setup stop counters
             for target in valid_targets:
                 target["stop"] = time.perf_counter_ns()
-                target["user_stop"] = read_cgroup_file_value(f"{target['dir']}/cpuacct.usage_user")
-                target["sys_stop"] = read_cgroup_file_value(f"{target['dir']}/cpuacct.usage_sys")
-                if target["user_stop"] is None or target["sys_stop"] is None:
+                tick_values = read_cgroup_file_stat(target["dir"])
+                target["user_ticks_stop"] = tick_values["user"]
+                target["sys_ticks_stop"] = tick_values["system"] 
+                if target["user_ticks_stop"] is None or target["sys_ticks_stop"] is None:
                     valid_targets.remove(target)
                     continue
 
                 # Process target data
                 elapsed_time = target["stop"] - target["start"]
-                user_usage = ((target["user_stop"] - target["user_start"]) / elapsed_time) * 100
-                system_usage = ((target["sys_stop"] - target["sys_start"]) / elapsed_time) * 100
+                user_usage = ((target["user_ticks_stop"] - target["user_ticks_start"]) * NS_PER_TICK / elapsed_time) * 100
+                system_usage = ((target["sys_ticks_stop"] - target["sys_ticks_start"]) * NS_PER_TICK / elapsed_time) * 100
 
                 data = f"usage,host={target['name']} user={user_usage},system={system_usage} {timestamp}"
                 current_batch.append(data)
