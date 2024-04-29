@@ -1,0 +1,3 @@
+influxdb_host: "montoxo.des.udc.es"
+influxdb_token: "MyToken"
+influxdb_org: "MyOrg"

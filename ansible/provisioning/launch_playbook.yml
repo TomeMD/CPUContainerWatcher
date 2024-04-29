@@ -1,0 +1,35 @@
+# Setup monitoring node
+- name: Launch services from monitoring node
+  hosts: localhost
+  gather_facts: no
+
+  vars_files:
+    - vars/main.yml
+    - config/config.yml
+
+  environment:
+    INFLUXDB_BUCKET: "{{ influxdb_bucket }}"
+    SMARTWATTS_PATH: "{{ smartwatts_path }}"
+    #PYTHONPATH: "{{ bdwatchdog_path }}:{{ serverless_containers_path }}"
+
+  tasks:
+    - import_tasks: tasks/launch/mongodb_launch.yml
+    - import_tasks: tasks/launch/smartwatts_launch.yml
+    - import_tasks: tasks/launch/power_sender_launch.yml
+
+
+# Setup target node
+- name: Launch services from target node
+  hosts: target
+
+  vars_files:
+    - vars/main.yml
+    - config/config.yml
+
+  environment:
+    SLURM_JOB_PARTITION: "{{ lookup('env', 'SLURM_JOB_PARTITION') }}"
+    INFLUXDB_BUCKET: "{{ influxdb_bucket }}"
+
+  tasks:
+    - import_tasks: tasks/launch/hwpc-sensor_launch.yml
+    - import_tasks: tasks/launch/usage_sender_launch.yml

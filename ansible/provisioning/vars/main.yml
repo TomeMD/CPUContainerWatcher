@@ -1,0 +1,14 @@
+# Monitoring node
+monitoring_path: /home/tome.maseda/monitoring
+mongodb_path: "{{ monitoring_path }}/mongodb"
+mongodb_data_path: "{{ monitoring_path }}/mongodb/data"
+smartwatts_path: "{{ monitoring_path }}/smartwatts"
+senders_path: "{{ monitoring_path }}/senders"
+
+
+# Target node
+target_path: /home/tome.maseda/target
+hwpc_sensor_path: "{{ target_path }}/hwpc-sensor"
+hwpc_sensor_reporting_path : /tmp/powerapi-sensor-reporting
+stress_system_path: "{{ target_path }}/stress-system"
+stress_tests_path: "{{ target_path }}/stress-tests"

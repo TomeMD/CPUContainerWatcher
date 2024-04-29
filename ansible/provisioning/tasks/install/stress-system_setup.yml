@@ -1,0 +1,25 @@
+- name: get the username running the deploy
+  become: no
+  local_action: command whoami
+  register: username_on_the_host
+
+- name: Create stress-system installation directory
+  file:
+    path: "{{ stress_system_path }}"
+    state: directory
+    owner: "{{ username_on_the_host.stdout_lines[0] }}"
+
+- name: Clone stress-system repository into installation directory
+  git:
+    repo: "https://github.com/TomeMD/stress-system.git"
+    dest: "{{ stress_system_path }}"
+    version: 'master'
+    clone: yes
+    update: yes
+
+- name: Build stress-system image
+  shell: "apptainer build stress.sif stress.def"
+  args:
+    chdir: "{{ stress_system_path }}/container"
+    executable: /bin/bash
+    creates: "stress.sif"

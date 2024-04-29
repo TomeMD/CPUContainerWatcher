@@ -1,0 +1,10 @@
+# Monitoring node IP address
+monitoring_node_ip: 192.168.1.20
+
+# Target (monitored) node IP address
+target_node_ip: 192.168.1.30
+
+mongodb_host: "{{ monitoring_node_ip }}"
+mongodb_port: 27017
+
+influxdb_bucket: "compute2"
