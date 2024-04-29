@@ -1,0 +1,54 @@
+# Stop services from monitoring node
+- hosts: localhost
+  gather_facts: no
+
+  vars_files:
+    - vars/main.yml
+    - config/config.yml
+
+  tasks:
+  - name: Tmux session check
+    shell: tmux ls
+    register: tmux_output
+    ignore_errors: yes
+
+  - name: Stop monitoring node tmux sessions
+    when: "item in tmux_output.stdout"
+    shell: "tmux kill-session -t {{ item }}"
+    args:
+      executable: /bin/bash
+    loop:
+      - power_sender
+  
+  - name: Stop monitoring node apptainer containers
+    shell: "sudo apptainer instance stop --all"
+    args:
+      executable: /bin/bash
+
+# Stop services from target node
+- hosts: target
+  gather_facts: no
+
+  vars_files:
+    - vars/main.yml
+    - config/config.yml
+
+  tasks:
+  - name: Tmux session check
+    shell: tmux ls
+    register: tmux_output
+    ignore_errors: yes
+
+  - name: Stop target node tmux sessions
+    when: "item in tmux_output.stdout"
+    shell: "tmux kill-session -t {{ item }}"
+    args:
+      executable: /bin/bash
+    loop:
+      - usage_sender
+      - stress-tests
+
+  - name: Stop target node apptainer containers
+    shell: "sudo apptainer instance stop --all"
+    args:
+      executable: /bin/bash

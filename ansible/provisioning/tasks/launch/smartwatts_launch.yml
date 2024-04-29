@@ -27,8 +27,8 @@
 
     - name: Wait for MongoDB to be up before starting SmartWatts
       wait_for:
-        host: {{ mongodb_host }}
-        port: {{ mongodb_port }}
+        host: "{{ mongodb_host }}"
+        port: "{{ mongodb_port }}"
         state: started
         delay: 5
         timeout: 300

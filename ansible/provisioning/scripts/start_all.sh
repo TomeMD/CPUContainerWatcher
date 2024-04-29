@@ -3,7 +3,7 @@ set -e
 
 scriptDir=$(dirname -- "$(readlink -f -- "$BASH_SOURCE")")
 
-INVENTORY=${scriptDir}/../../ansible.inventory
+export ANSIBLE_INVENTORY=${scriptDir}/../../ansible.inventory
 
 ## Copy ansible.cfg to $HOME
 cp ${scriptDir}/../../ansible.cfg ~/.ansible.cfg
@@ -23,17 +23,13 @@ ansible-galaxy collection install ansible.posix:==1.5.0
 
 echo ""
 echo "Installing necessary services and programs..."
-ansible-playbook ${scriptDir}/../install_playbook.yml -i $INVENTORY
+ansible-playbook ${scriptDir}/../install_playbook.yml -i $ANSIBLE_INVENTORY
 echo "Install Done!"
 
 source /etc/environment
 # Repeat the export command in case the /etc/environment file overwrites the PATH variable
 export PATH=$HOME/.local/bin:$PATH
 
-echo "Starting containers..."
-ansible-playbook ${scriptDir}/../start_containers_playbook.yml -i $INVENTORY
-echo "Containers started! "
-
 echo "Launching services..."
-ansible-playbook ${scriptDir}/../launch_playbook.yml -i $INVENTORY
+ansible-playbook ${scriptDir}/../launch_playbook.yml -i $ANSIBLE_INVENTORY
 echo "Launch Done!"

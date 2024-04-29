@@ -1,6 +1,5 @@
 - name: Install senders requirements
-  shell: "python3 -m pip install -r scripts/senders/requirements.txt"
-  when: "'power_sender' not in tmux_output.stdout"
+  shell: "python3 -m pip install -r {{ senders_path }}/requirements.txt"
   args:
     executable: /bin/bash
 
@@ -10,7 +9,7 @@
   ignore_errors: yes
 
 - name: Start tmux session for Power Sender
-  shell: "bash scripts/senders/start_power_sender_tmux.sh"
+  shell: "bash {{ senders_path }}/start_power_sender_tmux.sh"
   when: "'power_sender' not in tmux_output.stdout"
   args:
     executable: /bin/bash

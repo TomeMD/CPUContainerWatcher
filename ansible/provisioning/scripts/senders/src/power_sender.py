@@ -7,6 +7,8 @@ import pandas as pd
 from datetime import datetime, timezone, timedelta
 from influxdb_client import InfluxDBClient
 from influxdb_client.client.write_api import SYNCHRONOUS
+from ansible.parsing.dataloader import DataLoader
+from ansible.inventory.manager import InventoryManager
 
 from src.apptainer.ApptainerHandler import ApptainerHandler
 from src.utils.MyUtils import create_dir, clean_log_file
@@ -22,26 +24,19 @@ LOG_FILE = f"{LOG_DIR}/power_sender.log"
 
 logger = logging.getLogger("power_sender")
 
-def read_cgroup_file_value(path):
-    try:
-        if os.path.isfile(path) and os.access(path, os.R_OK):
-            with open(path, 'r') as f:
-                value = int(f.readline().strip().replace("\n", ""))
-            return value
-        else:
-            logger.error(f"Couldn't access file: {path}")
-            return None
-    except IOError as e:
-        logger.error(f"Error while reading {path}: {str(e)}")
-        return None
+def get_target_node(ansible_inventory_file):
+    loader = DataLoader()
+    ansible_inventory = InventoryManager(loader=loader, sources=ansible_inventory_file)
+    return ansible_inventory.get_groups_dict()['target'][0]
 
 if __name__ == "__main__":
 
-    if len(sys.argv) < 3:
-        raise Exception("Missing some arguments: power_sender.py <INFLUXDB_BUCKET> <SMARTWATTS_OUTPUT>")
+    if len(sys.argv) < 4:
+        raise Exception("Missing some arguments: power_sender.py <INFLUXDB_BUCKET> <SMARTWATTS_OUTPUT> <ANSIBLE_INVENTORY_FILE>")
 
     influxdb_bucket = sys.argv[1]
     smartwatts_output = sys.argv[2]
+    ansible_inventory_file = sys.argv[3]
 
     create_dir(LOG_DIR)
     clean_log_file(LOG_DIR, LOG_FILE)
@@ -64,13 +59,14 @@ if __name__ == "__main__":
     # Read SmartWatts output and get targets
     output_file = {}
     last_read_position = {}
+    target_node = get_target_node(ansible_inventory_file)
     while True:
         try:
             iter_count = {"targets": 0, "lines": 0}
             t_start = time.perf_counter_ns()
-            for container in apptainer_handler.get_running_containers_list():
+            for container in apptainer_handler.get_running_containers_list(target_node):
 
-                cont_pid = container["pid"]
+                cont_pid = container["pid"] 
                 cont_name = container["name"]
 
                 # If target is not registered, initialize it

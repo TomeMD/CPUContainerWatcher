@@ -262,11 +262,11 @@ export -f idle_cpu
 function run_seq_experiment() {
   TEST_FUNCTION=$1
   CURRENT_CORES="0"
-  LOAD=50
+  LOAD=10
 	while [ "${LOAD}" -le "100" ]; do
     "${TEST_FUNCTION}"
     idle_cpu
-    LOAD=$((LOAD + 50))
+    LOAD=$((LOAD + 10))
   done
 }
 

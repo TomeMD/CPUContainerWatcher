@@ -1,0 +1,22 @@
+- name: Copy stress tests directory
+  copy:
+    src: scripts/stress-tests/
+    dest: "{{ stress_tests_path }}"
+    mode: "0777"
+
+- name: Copy stress tests environment variables
+  template:
+    src: "templates/stress-tests/get-env.sh"
+    dest: "{{ stress_tests_path }}/bin/get-env.sh"
+
+- name: Tmux session check
+  shell: tmux ls
+  register: tmux_output
+  ignore_errors: yes
+
+- name: Run stress tests
+  shell: "tmux new -d -s 'stress-tests' 'bash run-tests.sh > ${SLURM_JOB_PARTITION}.log 2>&1'"
+  when: "'stress-tests' not in tmux_output.stdout"
+  args:
+    chdir: "{{ stress_tests_path }}"
+    executable: /bin/bash

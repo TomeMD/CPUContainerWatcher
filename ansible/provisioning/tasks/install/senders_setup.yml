@@ -1,0 +1,15 @@
+- name: get the username running the deploy
+  become: no
+  local_action: command whoami
+  register: username_on_the_host
+
+- name: Create senders installation directory
+  file:
+    path: "{{ senders_path }}"
+    state: directory
+    owner: "{{ username_on_the_host.stdout_lines[0] }}"
+
+- name: Copy senders directory
+  copy:
+    src: scripts/senders/
+    dest: "{{ senders_path }}"

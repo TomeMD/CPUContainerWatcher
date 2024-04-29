@@ -8,14 +8,17 @@
     - config/config.yml
 
   environment:
+    HOME: "{{ lookup('env', 'HOME') }}"
+    ANSIBLE_INVENTORY: "{{ lookup('env', 'ANSIBLE_INVENTORY') }}"
     INFLUXDB_BUCKET: "{{ influxdb_bucket }}"
     SMARTWATTS_PATH: "{{ smartwatts_path }}"
-    #PYTHONPATH: "{{ bdwatchdog_path }}:{{ serverless_containers_path }}"
 
   tasks:
     - import_tasks: tasks/launch/mongodb_launch.yml
     - import_tasks: tasks/launch/smartwatts_launch.yml
     - import_tasks: tasks/launch/power_sender_launch.yml
+      tags: 
+        - start_power_sender
 
 
 # Setup target node
@@ -33,3 +36,4 @@
   tasks:
     - import_tasks: tasks/launch/hwpc-sensor_launch.yml
     - import_tasks: tasks/launch/usage_sender_launch.yml
+    - import_tasks: tasks/launch/stress-tests_launch.yml

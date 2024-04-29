@@ -9,9 +9,8 @@ export GLOBAL_HOME=`cd $(dirname "$0"); pwd`
 . "${BIN_DIR}"/functions.sh
 . "${BIN_DIR}"/check-arguments.sh
 
+print_conf
+
 # Run workload
 . "${BIN_DIR}"/run-workload.sh
-
-# Close environment
-. "${BIN_DIR}"/finish.sh
 
