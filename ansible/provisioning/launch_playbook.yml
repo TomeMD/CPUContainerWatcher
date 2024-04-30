@@ -32,6 +32,7 @@
   environment:
     SLURM_JOB_PARTITION: "{{ lookup('env', 'SLURM_JOB_PARTITION') }}"
     INFLUXDB_BUCKET: "{{ influxdb_bucket }}"
+    MONITORING_NODE_IP: "{{ monitoring_node_ip }}"
 
   tasks:
     - import_tasks: tasks/launch/hwpc-sensor_launch.yml

@@ -9,7 +9,8 @@ from influxdb_client.client.exceptions import InfluxDBError
 from influxdb_client.client.write_api import SYNCHRONOUS
 
 from src.apptainer.ApptainerHandler import ApptainerHandler
-from src.utils.MyUtils import create_dir, clean_log_file
+from src.containers_socket.ContainersSender import ContainersSender
+from src.utils.MyUtils import create_dir, clean_log_file, container_lists_are_equal
 
 POLLING_FREQUENCY = 2
 MIN_BATCH_SIZE = 10
@@ -44,17 +45,19 @@ def read_cgroup_file_stat(target_dir):
         logger.error(f"Error while reading {path}: {str(e)}")
         return None
 
-
 if __name__ == "__main__":
 
-    if len(sys.argv) < 2:
-        raise Exception("Missing some arguments: usage_sender.py <INFLUXDB_BUCKET>")
+    if len(sys.argv) < 3:
+        raise Exception("Missing some arguments: usage_sender.py <INFLUXDB_BUCKET> <MONITORING_NODE_IP>")
 
     influxdb_bucket = sys.argv[1]
+    monitoring_node_ip = sys.argv[2]
 
     create_dir(LOG_DIR)
     clean_log_file(LOG_DIR, LOG_FILE)
     logging.basicConfig(filename=LOG_FILE, level=logging.INFO, format='%(levelname)s (%(name)s): %(asctime)s %(message)s')
+
+    container_sender = ContainersSender(monitoring_node_ip, logger)
 
     if not os.path.exists(CGROUP_BASE_PATH):
         logger.error(f"{CGROUP_BASE_PATH} doesn't exist. Make sure you are using cgroups v1"
@@ -74,11 +77,17 @@ if __name__ == "__main__":
     # Initialize t_stop to compute delay in first iteration properly
     t_stop = time.perf_counter_ns()
     current_batch = []
+    previous_containers = []
     while True:
         try:
+            current_containers = apptainer_handler.get_running_containers_list()
+            if not container_lists_are_equal(current_containers, previous_containers):
+                container_sender.send_containers_to_monitoring_node(current_containers)
+                previous_containers = current_containers.copy()
+
             # Filter and initialize valid targets to process
             valid_targets = []
-            for container in apptainer_handler.get_running_containers_list():
+            for container in current_containers:
                 target_dir = f"{CGROUP_BASE_PATH}/apptainer-{container['pid']}.scope"
                 if os.path.isdir(target_dir) and os.access(target_dir, os.R_OK):
                     valid_targets.append({"name": container["name"], "dir": target_dir})

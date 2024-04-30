@@ -23,8 +23,8 @@ if ! ping -c 1 "${INFLUXDB_HOST}" &> /dev/null; then
   exit 1
 fi
 
-if [ "${CUSTOM_TESTS}" -eq "1" ] && [ ! -f "${CUSTOM_TESTS_FILE}" ]; then
-  m_err "Provided custom tests file doesn't exists: ${CUSTOM_TESTS_FILE}"
+if [ "${CUSTOM_TESTS}" -eq "1" ] && [ ! -f "${TEST_DIR}/${CUSTOM_TESTS_FILE}" ]; then
+  m_err "Provided custom tests file doesn't exists: ${TEST_DIR}/${CUSTOM_TESTS_FILE}"
   exit 1
 fi
 

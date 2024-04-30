@@ -33,8 +33,8 @@ Usage: $(basename "$0") [OPTIONS]
   --add-io-noise           Run fio to make random reads/writes over specified target while running the specified
                            workload. Use --fio-target to specify target directory. This option is not compatible with
                            fio tests.
-  --custom-tests <file>    Use custom tests file to create custom lists of cores to stress.
-                           [Default: ./tests/custom-tests.sh]
+  --custom-tests <file>    Use custom tests file to create custom lists of cores to stress. You must create custom tests file under tests directory and specify its name (e.g. custom-tests.sh).
+                           [Default: None]
   -h, --help               Show this help and exit
 EOF
 exit 1

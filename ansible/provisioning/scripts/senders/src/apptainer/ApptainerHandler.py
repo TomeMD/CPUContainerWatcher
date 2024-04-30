@@ -16,6 +16,8 @@ class ApptainerHandler:
             cmd_list = ["ssh", node, "apptainer", "instance", "list", "-j"]
         process = subprocess.Popen(cmd_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         stdout, stderr = process.communicate()
+        if not stdout:
+            raise Exception(f"It wasn't possible to communicate with remote host {node}: {stderr.decode().strip()}")
         return json.loads(stdout)
 
     def get_running_containers(self):
@@ -25,6 +27,8 @@ class ApptainerHandler:
             cmd_list = ["apptainer", "instance", "list", "-j"]
         process = subprocess.Popen(cmd_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         stdout, stderr = process.communicate()
+        if not stdout:
+            raise Exception(f"It wasn't possible to get current containers: {stderr.decode().strip()}")
         return json.loads(stdout)
 
     def get_running_containers_list(self, node=None):
