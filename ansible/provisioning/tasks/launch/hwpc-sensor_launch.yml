@@ -33,9 +33,13 @@
         state: started
         delay: 5
         timeout: 300
+    
+    - name: Get last available core
+      shell: "python3 -c 'import multiprocessing;  print(multiprocessing.cpu_count()-1)'"
+      register: last_core
 
-    - name: Start HWPC Sensor apptainer container
-      shell: "sudo apptainer instance start -C --net --bind /sys:/sys --bind {{ hwpc_sensor_reporting_path }}:/reporting image/{{ image_file }} {{ container_name }}"
+    - name: Start HWPC Sensor apptainer container on last available core
+      shell: "sudo apptainer instance start -C --net --cpus 0.5 --cpuset-cpus {{ last_core.stdout }} --bind /sys:/sys --bind {{ hwpc_sensor_reporting_path }}:/reporting image/{{ image_file }} {{ container_name }}"
       when: "'\"instance\": \"{{ container_name }}\",' not in apptainer_list_output.stdout"
       args:
         chdir: "{{ hwpc_sensor_path }}"

@@ -6,6 +6,12 @@
 
 - name: Create installation directory
   file:
+    path: "{{ installation_path }}"
+    state: directory
+    owner: "{{ username_on_the_host.stdout_lines[0] }}"
+
+- name: Create monitoring installation directory
+  file:
     path: "{{ monitoring_path }}"
     state: directory
     owner: "{{ username_on_the_host.stdout_lines[0] }}"

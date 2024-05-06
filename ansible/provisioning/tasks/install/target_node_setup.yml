@@ -3,7 +3,7 @@
   local_action: command whoami
   register: username_on_the_host
 
-- name: Create installation directory
+- name: Create target installation directory
   file:
     path: "{{ target_path }}"
     state: directory
