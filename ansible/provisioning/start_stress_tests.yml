@@ -1,0 +1,21 @@
+# Launch stress tests on target node
+- name: Get target node hardware information
+  hosts: target
+
+  vars_files:
+    - vars/main.yml
+    - config/config.yml
+    -
+  tasks:
+    - import_tasks: tasks/stress-tests/get_hw_info.yml
+    - import_tasks: tasks/stress-tests/get_cores_distribution.yml
+      vars:
+        - phy_cores_per_socket_str: "{{ phy_cores_per_socket.stdout }}"
+        - sockets_str: "{{ sockets.stdout }}"
+        - threads_str: "{{ phy_cores_per_socket * sockets * 2 }}"
+
+    - include_tasks: tasks/stress-tests/run_experiments.yml
+      vars:
+        dist_name: "{{ item }}"
+        distribution: "{{ cores_distributions_dict[dist_name] }}"
+      with_items: "{{ cores_distributions_names }}"

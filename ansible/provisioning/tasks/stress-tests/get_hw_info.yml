@@ -1,0 +1,30 @@
+
+- name: Get physical cores per socket
+  shell: "lscpu | grep 'Core(s) per socket:' | awk '{print $4}'"
+  register: phy_cores_per_socket
+
+- name: Get number of sockets
+  shell: "lscpu | grep 'Socket(s):' | awk '{print $2}'"
+  register: sockets
+
+- name: Get number of threads
+  set_fact:
+    threads: "{{ phy_cores_per_socket.stdout | int * sockets.stdout | int * 2 }}"
+
+- name: Get physical/logical cores list
+  shell: "lscpu -e | awk 'NR > 1 { print $1, $4 }'"
+  register: cores_list
+
+- name: Create dictionary of physical cores as keys and logical cores as values
+  set_fact:
+    cores_dict: >-
+      {%- set dict = {} -%}
+      {%- for item in cores_list.stdout_lines -%}
+          {%- set cpu, core = item.split() -%}
+          {%- if core in dict -%}
+              {%- set _ = dict[core].append(cpu) -%}
+          {%- else -%}
+              {%- set _ = dict.update({core: [cpu]}) -%}
+          {%- endif -%}
+      {%- endfor -%}
+      {{ dict }}

@@ -1,0 +1,171 @@
+- name: Create single socket cores distribution based on cores dict
+  block:
+    - name: Create Only_P distribution array
+      set_fact:
+        only_p_cores: >-
+          {%- set result = [] -%}
+          {%- for core in range(cores_dict | length) -%}
+              {%- set logical_cores = cores_dict[core | string] -%}
+              {%- set _ = result.append(logical_cores[0]) -%}
+          {%- endfor -%}
+          {{ result }}
+
+    - name: Create Test_P&L distribution array
+      set_fact:
+        test_p_and_l_cores: >-
+          {%- set result = [] -%}
+          {%- for core in range(cores_dict | length) -%}
+              {%- set logical_cores = cores_dict[core | string] -%}
+              {%- set _ = result.append(logical_cores[0]) -%}
+              {%- if logical_cores[1] is defined -%}
+                  {%- set _ = result.append(logical_cores[1]) -%}
+              {%- endif -%}
+          {%- endfor -%}
+          {{ result }}
+
+    - name: Create Test_1P_2L distribution array
+      set_fact:
+        test_1p_2l_cores: >-
+          {%- set result = [] -%}
+          {%- for logical_core in [0, 1] -%}
+              {%- for core in range(cores_dict | length) -%}
+                  {%- set logical_cores = cores_dict[core | string] -%}
+                  {%- if logical_cores[logical_core] is defined -%}
+                      {%- set _ = result.append(logical_cores[logical_core]) -%}
+                  {%- endif -%}
+              {%- endfor -%}
+          {%- endfor -%}
+          {{ result }}
+
+    - name: Create Test_1P_2L distribution array
+      set_fact:
+        distributions: >-
+          {%- set result = [] -%}
+          {%- for logical_core in [0, 1] -%}
+              {%- for core in range(cores_dict | length) -%}
+                  {%- set logical_cores = cores_dict[core | string] -%}
+                  {%- if logical_cores[logical_core] is defined -%}
+                      {%- set _ = result.append(logical_cores[logical_core]) -%}
+                  {%- endif -%}
+              {%- endfor -%}
+          {%- endfor -%}
+          {{ result }}
+
+    - name: Create cores distributions dict
+      set_fact:
+        cores_distributions_dict:
+          Only_P: "{{ only_p_cores }}"
+          Test_P&L: "{{ test_p_and_l_cores }}"
+          Test_1P_2L: "{{ test_1p_2l_cores }}"
+
+    - name: Create cores distributions names list
+      set_fact:
+        cores_distributions_names: ["Only_P", "Test_P&L", "Test_1P_2L"]
+
+  when: sockets_str | int == 1
+
+- name: Create two-socket cores distribution based on cores dict
+  block:
+    - name: Create Group_P distribution array
+      set_fact:
+        group_p_cores: >-
+          {%- set result = [] -%}
+          {%- for core in range(cores_dict | length) -%}
+              {%- set logical_cores = cores_dict[core | string] | join(',') -%}
+              {%- set _ = result.append(logical_cores.split(',')[0]) -%}
+          {%- endfor -%}
+          {{ result }}
+
+    - name: Create Spread_P distribution array
+      set_fact:
+        spread_p_cores: >-
+          {%- set result = [] -%}
+          {%- set half_length = (cores_dict | length // 2) -%}
+          {%- for i in range(0, half_length, 2) -%}
+              {%- for core in [i, i + 1, i + phy_cores_per_socket_str | int, i + phy_cores_per_socket_str | int + 1] -%}
+                  {%- set logical_cores = cores_dict[core | string] | join(',') -%}
+                  {%- set _ = result.append(logical_cores.split(',')[0]) -%}
+              {%- endfor -%}
+          {%- endfor -%}
+          {{ result }}
+
+    - name: Create Group_P&L distribution array
+      set_fact:
+        group_p_and_l_cores: >-
+          {%- set result = [] -%}
+          {%- for core in range(cores_dict | length) -%}
+              {%- set logical_cores = cores_dict[core | string] | join(',') -%}
+              {%- set _ = result.append(logical_cores.split(',')[0]) -%}
+              {%- if logical_cores.split(',')[1] is defined -%}
+                  {%- set _ = result.append(logical_cores.split(',')[1]) -%}
+              {%- endif -%}
+          {%- endfor -%}
+          {{ result }}
+
+    - name: Create Group_1P_2L distribution array
+      set_fact:
+        group_1p_2l_cores: >-
+          {%- set result = [] -%}
+          {%- for offset in [0, phy_cores_per_socket_str | int] -%}
+              {%- for logical_core in [0, 1] -%}
+                  {%- for core in range(offset, offset + phy_cores_per_socket_str | int) -%}
+                      {%- set logical_cores = cores_dict[core | string] | join(',') -%}
+                      {%- if logical_cores.split(',')[logical_core] is defined -%}
+                          {%- set _ = result.append(logical_cores.split(',')[logical_core]) -%}
+                      {%- endif -%}
+                  {%- endfor -%}
+              {%- endfor -%}
+          {%- endfor -%}
+          {{ result }}
+
+    - name: Create Group_PP_LL distribution array
+      set_fact:
+        group_pp_ll_cores: >-
+          {%- set result = [] -%}
+          {%- for logical_core in [0, 1] -%}
+              {%- for core in range(cores_dict | length) -%}
+                  {%- set logical_cores = cores_dict[core | string] | join(',') -%}
+                  {%- if logical_cores.split(',')[logical_core] is defined -%}
+                      {%- set _ = result.append(logical_cores.split(',')[logical_core]) -%}
+                  {%- endif -%}
+              {%- endfor -%}
+          {%- endfor -%}
+          {{ result }}
+
+    - name: Create Spread_P&L distribution array
+      set_fact:
+        spread_p_and_l_cores: >-
+          {%- set result = [] -%}
+          {%- set half_length = (cores_dict | length) // 2 -%}
+          {%- for i in range(half_length) -%}
+              {%- for core in [i, i + phy_cores_per_socket_str | int] -%}
+                  {%- set logical_cores = cores_dict[core | string] | join(',') -%}
+                      {%- set _ = result.append(logical_cores.split(',')[0]) -%}
+                  {%- if logical_cores.split(',')[1] is defined -%}
+                      {%- set _ = result.append(logical_cores.split(',')[1]) -%}
+                  {%- endif -%}
+              {%- endfor -%}
+          {%- endfor -%}
+          {{ result }}
+
+    - name: Create cores distributions dict
+      set_fact:
+        cores_distributions_dict:
+          Group_P: "{{ group_p_cores }}"
+          Spread_P: "{{ spread_p_cores }}"
+          Group_P&L: "{{ group_p_and_l_cores }}"
+          Group_1P_2L: "{{ group_1p_2l_cores }}"
+          Group_PP_LL: "{{ group_pp_ll_cores }}"
+          Spread_P&L: "{{ spread_p_and_l_cores }}"
+
+    - name: Create cores distributions names list
+      set_fact:
+        cores_distributions_names: ["Group_P", "Spread_P", "Group_P&L", "Group_1P_2L", "Group_PP_LL", "Spread_P&L"]
+
+  when: sockets_str | int == 2
+
+
+- name: Create multisocket cores distribution based on cores dict
+  debug:
+    msg: 'Number of sockets greater than 2 not yet supported (CPU Sockets = {{ sockets_str }}).'
+  when: sockets_str | int > 2

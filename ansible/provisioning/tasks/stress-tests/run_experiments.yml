@@ -1,0 +1,24 @@
+- name: Run experiments
+  block:
+    - name: Check workload is supported
+      stat:
+        path: "workloads/{{ run_workload_file }}"
+      register: supported_workload
+
+    - name: Show workload not supported error
+      fail:
+        msg: "Workload {{ workload }} is not supported"
+      when: not supported_workload.stat.exists
+
+    - name: Run workload adding cores incrementally
+      include_tasks: workloads/{{ run_workload_file }}
+      loop: "{{ range(0, distribution | length, 2) | list }}"
+      when: supported_workload.stat.exists
+      vars:
+        start: "{{ item }}"
+        last_position: "{{ item | int + 2 }}"
+        load: "{{ (item | int // 2 + 1) * 200 }}"
+  vars:
+    - run_workload_file: "run_{{ workload }}.yml"
+    - experiment_duration: 10
+    - timestamps_file: "{{ dist_name }}.timestamps"

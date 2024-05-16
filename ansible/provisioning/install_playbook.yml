@@ -26,6 +26,8 @@
     - config/config.yml
 
   tasks:
+    - import_tasks: tasks/install/apptainer_setup.yml
+      when: container_engine == 'apptainer'
     - import_tasks: tasks/install/target_node_setup.yml
     - import_tasks: tasks/install/stress-system_setup.yml
     - import_tasks: tasks/install/stress-tests_setup.yml

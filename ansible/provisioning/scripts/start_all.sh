@@ -33,3 +33,11 @@ export PATH=$HOME/.local/bin:$PATH
 echo "Launching services..."
 ansible-playbook ${scriptDir}/../launch_playbook.yml -i $ANSIBLE_INVENTORY
 echo "Launch Done!"
+
+source /etc/environment
+# Repeat the export command in case the /etc/environment file overwrites the PATH variable
+export PATH=$HOME/.local/bin:$PATH
+
+echo "Runing stress tests..."
+ansible-playbook ${scriptDir}/../start_stress_tests.yml -i $ANSIBLE_INVENTORY
+echo "Stress tests finished!"
