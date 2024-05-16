@@ -18,7 +18,8 @@ def getHostsInfo():
         config["target"]["name"] = hostlist[1]
         config["target"]["ip"] = socket.gethostbyname(hostlist[1])
     else:
-        raise Exception("Not enough nodes. At least 2 nodes are required (One monitoring node and one target (monitored) node")
+        raise Exception("Not enough nodes. At least 2 nodes are required: "
+                        "One monitoring node and one target (monitored) node")
 
     print(config)
 

@@ -1,62 +1,40 @@
 import os
 import sys
 import time
-import yaml
-import logging
 import pandas as pd
 from datetime import datetime, timezone, timedelta
-from influxdb_client import InfluxDBClient
-from influxdb_client.client.write_api import SYNCHRONOUS
+from ansible.parsing.dataloader import DataLoader
+from ansible.inventory.manager import InventoryManager
 
-from src.apptainer.ApptainerHandler import ApptainerHandler
-from src.utils.MyUtils import create_dir, clean_log_file
+from src.Sender import Sender
+from src.containers_socket.ContainersReceiver import ContainersReceiver
 
 POLLING_FREQUENCY = 5
-
-SCRIPT_PATH = os.path.abspath(__file__)
-SCRIPT_DIR = os.path.dirname(SCRIPT_PATH)
-SENDERS_DIR = os.path.dirname(SCRIPT_DIR)
-INFLUXDB_CONFIG_FILE = f"{SENDERS_DIR}/influxdb/config.yml"
-LOG_DIR = f"{SENDERS_DIR}/log"
-LOG_FILE = f"{LOG_DIR}/power_sender.log"
+GLOBAL_TARGETS = ["rapl", "global"]
 
 
-class PowerSender:
+class PowerSender(Sender):
 
-    output_file = None
-    last_read_position = None
-    start_timestamp = None
-    logger = None
-    smartwatts_output = None
-    apptainer_handler = None
-    influxdb_bucket = None
-    influxdb_client = None
-
-    @staticmethod
-    def init_logging_config():
-        create_dir(LOG_DIR)
-        clean_log_file(LOG_DIR, LOG_FILE)
-        logging.basicConfig(filename=LOG_FILE,
-                            level=logging.INFO,
-                            format='%(levelname)s (%(name)s): %(asctime)s %(message)s')
-
-    def __get_influxdb_session(self):
-        with open(INFLUXDB_CONFIG_FILE, "r") as f:
-            influxdb_config = yaml.load(f, Loader=yaml.FullLoader)
-
-        # Get session to InfluxDB
-        influxdb_url = f"http://{influxdb_config['influxdb_host']}:8086"
-        self.influxdb_client = InfluxDBClient(url=influxdb_url, token=influxdb_config['influxdb_token'], org=influxdb_config['influxdb_org'])
-
-    def __init__(self, smartwatts_output, influxdb_bucket):
+    def __init__(self, influxdb_bucket, smartwatts_output, ansible_inventory_file):
+        super().__init__(influxdb_bucket, "power_sender")
         self.output_file = {}
         self.last_read_position = {}
         self.start_timestamp = datetime.now(timezone.utc)
-        self.logger = logging.getLogger("power_sender")
         self.smartwatts_output = smartwatts_output
-        self.apptainer_handler = ApptainerHandler(privileged=True)
-        self.influxdb_bucket = influxdb_bucket
-        self.__get_influxdb_session()
+        self.target_node = self.get_target_node(ansible_inventory_file)
+        self.containers_receiver = ContainersReceiver(self.logger, self.target_node)
+
+    @staticmethod
+    def get_target_node(ansible_inventory_file):
+        loader = DataLoader()
+        ansible_inventory = InventoryManager(loader=loader, sources=ansible_inventory_file)
+        return ansible_inventory.get_groups_dict()['target'][0]
+
+    def __start_containers_receiver(self):
+        self.containers_receiver.create_thread()
+
+    def __stop_containers_receiver(self):
+        self.containers_receiver.stop_thread()
 
     def aggregate_and_send_data(self, bulk_data, host):
         # Aggregate data by cpu (mean) and timestamp (sum)
@@ -70,10 +48,7 @@ class PowerSender:
                 target_metrics.append(data)
 
             # Send data to InfluxDB
-            try:
-                self.influxdb_client.write_api(write_options=SYNCHRONOUS).write(bucket=influxdb_bucket, record=target_metrics)
-            except Exception as e:
-                self.logger.error(f"Error sending data to InfluxDB: {e}")
+            self.send_data_to_influxdb(target_metrics)
 
     def get_data_from_lines(self, lines, target):
         bulk_data = []
@@ -99,7 +74,7 @@ class PowerSender:
             bulk_data.append(data)
         return bulk_data
 
-    def read_target_output(self, output_path, current_position, target):
+    def read_and_send_target_output(self, output_path, current_position, target):
         num_lines = 0
         new_position = None
         try:
@@ -144,7 +119,7 @@ class PowerSender:
 
         iter_count = {"targets": 0, "lines": 0}
 
-        for container in self.apptainer_handler.get_running_containers_list():
+        for container in self.containers_receiver.get_running_containers():
 
             cont_pid = container["pid"]
             cont_name = container["name"]
@@ -159,7 +134,7 @@ class PowerSender:
                 self.logger.warning(f"Couldn't access file from target {container['name']}: {self.output_file[cont_pid]}")
                 continue
 
-            processed_lines, new_position = self.read_target_output(self.output_file[cont_pid],
+            processed_lines, new_position = self.read_and_send_target_output(self.output_file[cont_pid],
                                                                     self.last_read_position[cont_pid],
                                                                     cont_name)
 
@@ -172,57 +147,59 @@ class PowerSender:
 
         return iter_count
 
-    def process_global_power(self):
+    def init_global_target_files(self):
+        for target in GLOBAL_TARGETS:
+            self.output_file[target] = f"{self.smartwatts_output}/sensor-{target}/PowerReport.csv"
+            self.last_read_position[target] = 0
 
+    def process_global_targets(self):
         iter_count = {"targets": 0, "lines": 0}
-        output_file =
-        for target in ["rapl", "global"]:
-            output_file = f"{self.smartwatts_output}/sensor-{target}/PowerReport.csv"
-            cont_pid = container["pid"]
-            cont_name = container["name"]
 
-            # If target is not registered, initialize it
-            if cont_pid not in self.output_file:
-                self.logger.info(f"Found new target with name {cont_name} and pid {cont_pid}. Registered.")
-                self.output_file[cont_pid] = f"{smartwatts_output}/sensor-apptainer-{cont_pid}/PowerReport.csv"
-                self.last_read_position[cont_pid] = 0
+        for target in GLOBAL_TARGETS:
 
-            if not os.path.isfile(self.output_file[cont_pid]) or not os.access(self.output_file[cont_pid], os.R_OK):
-                self.logger.warning(f"Couldn't access file from target {container['name']}: {self.output_file[cont_pid]}")
+            if not os.path.isfile(self.output_file[target]) or not os.access(self.output_file[target], os.R_OK):
+                self.logger.warning(f"Couldn't access file from target {target}: {self.output_file[target]}")
                 continue
 
-            processed_lines, new_position = self.read_target_output(self.output_file[cont_pid],
-                                                                    self.last_read_position[cont_pid],
-                                                                    cont_name)
-
+            processed_lines, new_position = self.read_and_send_target_output(self.output_file[target],
+                                                                    self.last_read_position[target],
+                                                                    target)
             if processed_lines > 0:
                 iter_count["targets"] += 1
                 iter_count["lines"] += processed_lines
 
             if new_position is not None:
-                self.last_read_position[cont_pid] = new_position
+                self.last_read_position[target] = new_position
 
         return iter_count
 
     def send_power(self):
-
         # Create log files and set logger
-        self.init_logging_config()
+        self.__init_logging_config()
 
-        # Log current timestamp UTC
-        self.logger.info(f"Start time: {self.start_timestamp}")
+        # Get InfluxDB session
+        self.__start_influxdb_client()
+
+        # Start ContainersReceiver thread
+        self.__start_containers_receiver()
+
+        # Initialize global target files as they are previously known
+        self.init_global_target_files()
 
         # Read SmartWatts output and get targets
-        while True:
-            try:
+        try:
+            while True:
                 t_start = time.perf_counter_ns()
 
                 iter_count = self.process_containers()
+                global_iter_count = self.process_global_targets()
 
                 t_stop = time.perf_counter_ns()
                 delay = (t_stop - t_start) / 1e9
-                self.logger.info(f"Processed {iter_count['targets']} targets and {iter_count['lines']} "
-                                 f"lines causing a delay of {delay} seconds")
+                self.logger.info(f"Processed {iter_count['targets'] + global_iter_count ['targets']} targets "
+                                 f"({iter_count['targets']} containers + {global_iter_count ['targets']} global) "
+                                 f"and {iter_count['lines'] + global_iter_count ['lines']} lines "
+                                 f"causing a delay of {delay} seconds")
 
                 # Avoids negative sleep times when there is a high delay
                 if delay > POLLING_FREQUENCY:
@@ -231,19 +208,24 @@ class PowerSender:
                     delay = delay % POLLING_FREQUENCY
                 time.sleep(POLLING_FREQUENCY - delay)
 
-            except Exception as e:
-                self.logger.error(f"Unexpected error: {str(e)}")
+        except Exception as e:
+            self.logger.error(f"Unexpected error: {str(e)}")
+
+        finally:
+            self.__stop_influxdb_client()
+            self.__stop_containers_receiver()
 
 
 if __name__ == "__main__":
-    if len(sys.argv) < 3:
-        raise Exception("Missing some arguments: power_sender.py <INFLUXDB_BUCKET> <SMARTWATTS_OUTPUT>")
+    if len(sys.argv) < 4:
+        raise Exception("Missing some arguments: power_sender.py <INFLUXDB_BUCKET> <SMARTWATTS_OUTPUT> <ANSIBLE_INVENTORY_FILE>")
 
     influxdb_bucket = sys.argv[1]
     smartwatts_output = sys.argv[2]
+    ansible_inventory_file = sys.argv[3]
 
     try:
-        power_sender = PowerSender(smartwatts_output, influxdb_bucket)
+        power_sender = PowerSender(influxdb_bucket, smartwatts_output, ansible_inventory_file)
         power_sender.send_power()
     except Exception as e:
         raise Exception(f"Error while trying to create PowerSender instance: {str(e)}")

@@ -13,4 +13,4 @@ fi
 INFLUXDB_BUCKET=${1}
 MONITORING_NODE_IP=${2}
 
-python3 "${SCRIPT_DIR}"/src/usage_sender.py "${INFLUXDB_BUCKET}" "${MONITORING_NODE_IP}"
+python3 "${SCRIPT_DIR}"/src/UsageSender.py "${INFLUXDB_BUCKET}" "${MONITORING_NODE_IP}"
