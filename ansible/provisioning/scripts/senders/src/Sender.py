@@ -30,7 +30,7 @@ class Sender:
         self.log_file = f"{LOG_DIR}/{self.sender_name}.log"
         self.logger = logging.getLogger(self.sender_name)
 
-    def __start_influxdb_client(self):
+    def _start_influxdb_client(self):
         with open(self.influxdb_config_file, "r") as f:
             influxdb_config = yaml.load(f, Loader=yaml.FullLoader)
         # Get session to InfluxDB
@@ -39,10 +39,10 @@ class Sender:
                                               token=influxdb_config['influxdb_token'],
                                               org=influxdb_config['influxdb_org'])
 
-    def __stop_influxdb_client(self):
+    def _stop_influxdb_client(self):
         self.influxdb_client.close()
 
-    def __init_logging_config(self):
+    def _init_logging_config(self):
         MyUtils.create_dir(self.log_dir)
         MyUtils.clean_log_file(self.log_dir, self.log_file)
         logging.basicConfig(filename=self.log_file,

@@ -51,23 +51,22 @@ class UsageSender(Sender):
 
     def read_cgroup_file_stat(self, target_dir):
         path = f"{target_dir}/cpuacct.stat"
-        values = {"user": 0, "system": 0}
+        values = {"user": None, "system": None}
         try:
             if os.path.isfile(path) and os.access(path, os.R_OK):
                 with open(path, 'r') as f:
                     for line in f:
                         fields = line.split()
                         values[fields[0]] = int(fields[1])
-                return values
             else:
                 self.logger.error(f"Couldn't access file: {path}")
-                return None
         except IOError as e:
             self.logger.error(f"Error while reading {path}: {str(e)}")
-            return None
+        finally:
+            return values
 
     def compute_delay(self, t_start, t_stop):
-        delay = (t_stop - t_start) / 1e9
+        delay = (t_start - t_stop) / 1e9
         if delay > POLLING_FREQUENCY:
             self.logger.warning(f"High delay ({delay}) causing negative sleep times. Waiting until the next {POLLING_FREQUENCY}s cycle")
             delay = delay % POLLING_FREQUENCY
@@ -88,10 +87,12 @@ class UsageSender(Sender):
         for target in self.valid_targets:
             target[counter_type] = time.perf_counter_ns()
             tick_values = self.read_cgroup_file_stat(target["dir"])
-            target[f"user_ticks_{counter_type}"] = tick_values["user"]
-            target[f"sys_ticks_{counter_type}"] = tick_values["system"]
-            if target[f"user_ticks_{counter_type}"] is None or target[f"sys_ticks_{counter_type}"] is None:
+            if tick_values["user"] is None or tick_values["system"] is None:
                 self.valid_targets.remove(target)
+            else:
+                target[f"user_ticks_{counter_type}"] = tick_values["user"]
+                target[f"sys_ticks_{counter_type}"] = tick_values["system"]
+
 
     def process_targets_data(self, timestamp):
         for target in self.valid_targets:
@@ -104,10 +105,10 @@ class UsageSender(Sender):
 
     def send_usage(self):
         # Create log files and set logger
-        self.__init_logging_config()
+        self._init_logging_config()
 
         # Get session to InfluxDB
-        self.__start_influxdb_client()
+        self._start_influxdb_client()
 
         # Initialize t_stop to compute delay in first iteration properly
         t_stop = time.perf_counter_ns()
@@ -144,6 +145,8 @@ class UsageSender(Sender):
                 self.logger.info(f"Current batch size is {self.get_batch_length()}. "
                                  f"Last iteration delay: {delay} seconds")
 
+
+
                 # If current batch has at least MIN_BATCH_SIZE data points, send and clear the batch
                 if self.get_batch_length() >= MIN_BATCH_SIZE:
                     self.send_data_to_influxdb(self.current_batch)
@@ -153,7 +156,7 @@ class UsageSender(Sender):
             self.logger.error(f"Unexpected error: {str(e)}")
 
         finally:
-            self.__stop_influxdb_client()
+            self._stop_influxdb_client()
 
 
 if __name__ == "__main__":

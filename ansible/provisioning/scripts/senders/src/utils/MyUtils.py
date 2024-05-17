@@ -17,6 +17,8 @@ class MyUtils:
 
     @staticmethod
     def dict_lists_are_equal(l1, l2, key):
-        l1_copy = l1.copy().sort(key=lambda d: d[key])
-        l2_copy = l2.copy().sort(key=lambda d: d[key])
+        l1_copy = l1.copy()
+        l1_copy.sort(key=lambda d: d[key])
+        l2_copy = l2.copy()
+        l2_copy.sort(key=lambda d: d[key])
         return l1_copy == l2_copy

@@ -175,10 +175,10 @@ class PowerSender(Sender):
 
     def send_power(self):
         # Create log files and set logger
-        self.__init_logging_config()
+        self._init_logging_config()
 
         # Get InfluxDB session
-        self.__start_influxdb_client()
+        self._start_influxdb_client()
 
         # Start ContainersReceiver thread
         self.__start_containers_receiver()
@@ -212,7 +212,7 @@ class PowerSender(Sender):
             self.logger.error(f"Unexpected error: {str(e)}")
 
         finally:
-            self.__stop_influxdb_client()
+            self._stop_influxdb_client()
             self.__stop_containers_receiver()
 
 
