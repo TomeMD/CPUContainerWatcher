@@ -36,11 +36,11 @@ From: python:3-slim
 %runscript
     echo "Starting SmartWatts..."
     mkdir -p ${SMARTWATTS_OUTPUT}
-    rm -rf ${SMARTWATTS_OUTPUT}/*
-    python3 -m smartwatts --config-file /smartwatts-config.json
+    #rm -rf ${SMARTWATTS_OUTPUT}/*
+    python3 -m smartwatts --config-file /smartwatts-config.json > /dev/null 2>&1
 
 %startscript
     echo "Starting SmartWatts..."
     mkdir -p ${SMARTWATTS_OUTPUT}
-    rm -rf ${SMARTWATTS_OUTPUT}/*
-    python3 -m smartwatts  --config-file /smartwatts-config.json
+    #rm -rf ${SMARTWATTS_OUTPUT}/*
+    python3 -m smartwatts  --config-file /smartwatts-config.json > /dev/null 2>&1

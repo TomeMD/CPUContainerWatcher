@@ -13,3 +13,8 @@
   copy:
     src: scripts/senders/
     dest: "{{ senders_path }}"
+
+- name: Copy InfluxDB configuration for senders
+  template:
+    src: scripts/senders/influxdb/config.yml
+    dest: "{{ senders_path }}/influxdb/config.yml"

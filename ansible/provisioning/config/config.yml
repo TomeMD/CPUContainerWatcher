@@ -13,12 +13,15 @@ mongodb_host: "{{ monitoring_node_ip }}"
 mongodb_port: 27017
 
 # InfluxDB configuration
+influxdb_host: "montoxo.des.udc.es"
+influxdb_token: "MyToken"
+influxdb_org: "MyOrg"
 influxdb_bucket: "compute2"
 
-# Stress tests configuration
+# Stress tests workload
 workload: stress-system
 
-# Stress-system configuration
+# If stress-system is used it can be configured here
 stressors: cpu
 load_types: all
 stress_disk_bind: /scratch2

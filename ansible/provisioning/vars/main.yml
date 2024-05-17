@@ -7,7 +7,7 @@ mongodb_path: "{{ monitoring_path }}/mongodb"
 mongodb_data_path: "{{ monitoring_path }}/mongodb/data"
 smartwatts_path: "{{ monitoring_path }}/smartwatts"
 senders_path: "{{ monitoring_path }}/senders"
-
+timestamps_dir_base_path: "{{ installation_path }}/monitoring/timestamps"
 
 # Target node
 target_path: "{{ installation_path }}/target"

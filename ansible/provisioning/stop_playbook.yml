@@ -46,7 +46,6 @@
       executable: /bin/bash
     loop:
       - usage_sender
-      - stress-tests
 
   - name: Stop target node apptainer containers
     shell: "sudo apptainer instance stop --all"

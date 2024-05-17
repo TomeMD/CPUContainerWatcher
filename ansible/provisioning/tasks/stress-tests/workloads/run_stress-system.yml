@@ -2,22 +2,19 @@
   block:
 
     - name: Check containers status
-      delegate_to: localhost
       shell: "sudo {{ singularity_command_alias }} instance list -j"
       register: apptainer_list_output
       args:
         executable: /bin/bash
 
     - name: Start SmartWatts
-      delegate_to: localhost
-      shell: "sudo {{ singularity_command_alias }} instance start -C --bind {{ smartwatts_output }}:/sensor-output image/{{ image_file }} {{ container_name }}"
-      when: "'\"instance\": \"{{ container_name }}\",' not in apptainer_list_output.stdout"
+      shell: "sudo {{ singularity_command_alias }} instance start -C --bind {{ smartwatts_output }}:/sensor-output image/smartwatts.sif smartwatts"
+      when: "'\"instance\": \"smartwatts\",' not in apptainer_list_output.stdout"
       args:
         chdir: "{{ smartwatts_path }}"
         executable: /bin/bash
 
     - name: Give SmartWatts a couple of seconds to be ready
-      delegate_to: localhost
       pause:
         seconds: 15
 
@@ -30,63 +27,55 @@
         stress_system_options: "--other {{ other_options }} -l {{ load }} -s {{ stressors }} --cpu-load-types {{ load_types }} -c {{ current_cores }} -t 2m"
       when: "'iomix' in stressors.split(',')"
 
-    - name: Write start timestamp
-      delegate_to: localhost
+    - name: Write start stress test timestamp
       lineinfile:
-        path: "{{ timestamps_dir_path }}/{{ timestamps_file }}"
-        line: "{{ dist_name }} STRESS-TEST (CORES = {{ current_cores }}) START: {{ now(utc=true,fmt='+%d/%m/%Y %H:%M:%S') }}"
+        path: "{{ timestamps_file }}"
+        line: "{{ dist_name }} STRESS-TEST (CORES = {{ current_cores }}) START: {{ now(utc=true,fmt='%d/%m/%Y %H:%M:%S%z') }}"
         create: yes
 
     - name: Run stress-system
+      delegate_to: "{{ groups[ 'target' ].0 }}"
       shell: "sudo {{ singularity_command_alias }} instance start -C --bind {{ stress_disk_bind }}:/{{ stress_disk_bind }} {{ stress_system_path }}/container/stress.sif stress {{ stress_system_options }}"
       args:
           executable: /bin/bash
 
     - name: Wait for the stress test to finish
-      delegate_to: localhost
       pause:
         seconds: "{{ experiment_duration }}"
 
-    - name: Write stop timestamp
-      delegate_to: localhost
+    - name: Write stop stress test timestamp
       lineinfile:
-        path: "{{ timestamps_dir_path }}/{{ timestamps_file }}"
-        line: "{{ dist_name }} STRESS-TEST (CORES = {{ current_cores }}) STOP: {{ now(utc=true,fmt='+%d/%m/%Y %H:%M:%S') }}"
+        path: "{{ timestamps_file }}"
+        line: "{{ dist_name }} STRESS-TEST (CORES = {{ current_cores }}) STOP: {{ now(utc=true,fmt='%d/%m/%Y %H:%M:%S%z') }}"
         create: yes
-
-    - name: Stop stress-system
-      shell: "sudo {{ singularity_command_alias }} instance stop stress"
-      args:
-        executable: /bin/bash
 
     - name: Write start idle timestamp
-      delegate_to: localhost
       lineinfile:
-        path: "{{ timestamps_dir_path }}/{{ timestamps_file }}"
-        line: "{{ dist_name }} IDLE START: {{ now(utc=true,fmt='+%d/%m/%Y %H:%M:%S') }}"
+        path: "{{ timestamps_file }}"
+        line: "{{ dist_name }} IDLE START: {{ now(utc=true,fmt='%d/%m/%Y %H:%M:%S%z') }}"
         create: yes
 
-    - name: Wait 30s for the system to stabilize
-      delegate_to: localhost
+    - name: Wait 30s to retrieve idle container metrics
       pause:
         seconds: 30
 
     - name: Write stop idle timestamp
-      delegate_to: localhost
       lineinfile:
-        path: "{{ timestamps_dir_path }}/{{ timestamps_file }}"
-        line: "{{ dist_name }} IDLE START: {{ now(utc=true,fmt='+%d/%m/%Y %H:%M:%S') }}"
+        path: "{{ timestamps_file }}"
+        line: "{{ dist_name }} IDLE START: {{ now(utc=true,fmt='%d/%m/%Y %H:%M:%S%z') }}"
         create: yes
 
+    - name: Stop stress-system
+      delegate_to: "{{ groups[ 'target' ].0 }}"
+      shell: "sudo {{ singularity_command_alias }} instance stop stress"
+      args:
+        executable: /bin/bash
+
     - name: Stop SmartWatts
-      delegate_to: localhost
       shell: "sudo {{ singularity_command_alias }} instance stop smartwatts"
       args:
         executable: /bin/bash
 
   vars:
-    - current_cores: "{{ distribution[0:last_position | int] }}"
+    - current_cores: "{{ distribution[0:last_position | int] | join(',') }}"
     - smartwatts_output: "{{ smartwatts_path }}/output"
-    - definition_file: "smartwatts.def"
-    - image_file: "smartwatts.sif"
-    - container_name: "smartwatts"

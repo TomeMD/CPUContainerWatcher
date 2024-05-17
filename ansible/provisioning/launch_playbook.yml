@@ -37,4 +37,3 @@
   tasks:
     - import_tasks: tasks/launch/hwpc-sensor_launch.yml
     - import_tasks: tasks/launch/usage_sender_launch.yml
-    - import_tasks: tasks/launch/stress-tests_launch.yml

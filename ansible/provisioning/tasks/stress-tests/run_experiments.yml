@@ -2,7 +2,7 @@
   block:
     - name: Check workload is supported
       stat:
-        path: "workloads/{{ run_workload_file }}"
+        path: "{{ playbook_dir }}/tasks/stress-tests/workloads/{{ run_workload_file }}"
       register: supported_workload
 
     - name: Show workload not supported error
@@ -10,15 +10,34 @@
         msg: "Workload {{ workload }} is not supported"
       when: not supported_workload.stat.exists
 
+    - name: Show distribution
+      debug:
+        msg: "Distribution is {{ dist_name }}: {{ distribution }}"
+
+    - name: Remove timestamps file if already exists
+      file:
+        path: "{{ timestamps_file }}"
+        state: absent
+
+    - name: Run workload sequential experiments
+      include_tasks: workloads/{{ run_workload_file }}
+      loop: "{{ range(0, 100, 10) | list }}"
+      loop_control:
+        loop_var: seq_load
+      when: supported_workload.stat.exists
+      vars:
+        last_position: "1"
+        load: "{{ seq_load | int }}"
+
     - name: Run workload adding cores incrementally
       include_tasks: workloads/{{ run_workload_file }}
       loop: "{{ range(0, distribution | length, 2) | list }}"
+      loop_control:
+        loop_var: distribution_iter
       when: supported_workload.stat.exists
       vars:
-        start: "{{ item }}"
-        last_position: "{{ item | int + 2 }}"
-        load: "{{ (item | int // 2 + 1) * 200 }}"
+        last_position: "{{ distribution_iter | int + 2 }}"
+        load: "{{ (distribution_iter | int // 2 + 1) * 200 }}"
   vars:
     - run_workload_file: "run_{{ workload }}.yml"
-    - experiment_duration: 10
-    - timestamps_file: "{{ dist_name }}.timestamps"
+    - experiment_duration: 120
