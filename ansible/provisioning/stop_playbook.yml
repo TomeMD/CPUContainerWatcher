@@ -25,6 +25,15 @@
     args:
       executable: /bin/bash
 
+  - name: Clean SmartWatts output directory
+    file:
+      state: "{{ item }}"
+      path: "{{ smartwatts_path }}/output"
+      owner: "{{ username_on_the_host.stdout_lines[0] }}"
+    with_items:
+      - absent
+      - directory
+
 # Stop services from target node
 - hosts: target
   gather_facts: no

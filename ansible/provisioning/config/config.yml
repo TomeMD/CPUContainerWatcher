@@ -23,6 +23,6 @@ workload: stress-system
 
 # If stress-system is used it can be configured here
 stressors: cpu
-load_types: all
+load_types: all # Only relevant when using cpu as stressor
 stress_disk_bind: /scratch2
 other_options: "temp-path={{ stress_disk_bind }}"

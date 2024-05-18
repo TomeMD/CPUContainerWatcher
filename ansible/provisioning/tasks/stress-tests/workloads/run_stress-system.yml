@@ -2,13 +2,13 @@
   block:
 
     - name: Check containers status
-      shell: "sudo {{ singularity_command_alias }} instance list -j"
+      shell: "{{ singularity_command_alias }} instance list -j"
       register: apptainer_list_output
       args:
         executable: /bin/bash
 
     - name: Start SmartWatts
-      shell: "sudo {{ singularity_command_alias }} instance start -C --bind {{ smartwatts_output }}:/sensor-output image/smartwatts.sif smartwatts"
+      shell: "{{ singularity_command_alias }} instance start -C --bind {{ smartwatts_output }}:/sensor-output image/smartwatts.sif smartwatts"
       when: "'\"instance\": \"smartwatts\",' not in apptainer_list_output.stdout"
       args:
         chdir: "{{ smartwatts_path }}"
@@ -72,7 +72,7 @@
         executable: /bin/bash
 
     - name: Stop SmartWatts
-      shell: "sudo {{ singularity_command_alias }} instance stop smartwatts"
+      shell: "{{ singularity_command_alias }} instance stop smartwatts"
       args:
         executable: /bin/bash
 

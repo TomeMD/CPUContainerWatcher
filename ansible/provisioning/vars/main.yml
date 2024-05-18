@@ -1,3 +1,6 @@
+# Project directory
+project_path: "{{ playbook_dir }}/../../"
+
 # Installation directory
 installation_path: /home/tome.maseda/ContainerPowerWatcher_install
 
@@ -15,3 +18,4 @@ hwpc_sensor_path: "{{ target_path }}/hwpc-sensor"
 hwpc_sensor_reporting_path : /tmp/powerapi-sensor-reporting
 stress_system_path: "{{ target_path }}/stress-system"
 stress_tests_path: "{{ target_path }}/stress-tests"
+

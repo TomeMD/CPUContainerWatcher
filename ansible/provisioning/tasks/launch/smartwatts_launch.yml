@@ -20,7 +20,7 @@
         creates: "image/{{ image_file }}"
 
     - name: Check containers status
-      shell: "sudo {{ singularity_command_alias }} instance list -j"
+      shell: "{{ singularity_command_alias }} instance list -j"
       register: apptainer_list_output
       args:
         executable: /bin/bash
@@ -34,7 +34,7 @@
         timeout: 300
 
     - name: Start SmartWatts apptainer container
-      shell: "sudo {{ singularity_command_alias }} instance start -C --bind {{ smartwatts_output }}:/sensor-output image/{{ image_file }} {{ container_name }}"
+      shell: "{{ singularity_command_alias }} instance start -C --bind {{ smartwatts_output }}:/sensor-output image/{{ image_file }} {{ container_name }}"
       when: "'\"instance\": \"{{ container_name }}\",' not in apptainer_list_output.stdout"
       args:
         chdir: "{{ smartwatts_path }}"
