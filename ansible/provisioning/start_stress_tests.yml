@@ -27,4 +27,5 @@
         - dist_name: "{{ item }}"
         - distribution: "{{ hostvars[groups['target'].0].cores_distributions_dict[dist_name] }}"
         - timestamps_file: "{{ timestamps_dir_base_path }}/{{ stressors | replace(',', '_') }}/{{ load_types }}/{{ item }}.timestamps"
+        - project_timestamps_copy: "{{ project_path }}//timestamps/{{ stressors | replace(',', '_') }}/{{ load_types }}/{{ item }}.timestamps"
       with_items: "{{ hostvars[groups['target'].0].cores_distributions_names }}"

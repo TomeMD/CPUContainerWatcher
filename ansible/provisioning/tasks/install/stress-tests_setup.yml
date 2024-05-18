@@ -8,3 +8,9 @@
     path: "{{ timestamps_dir_base_path }}/{{ stressors | replace(',', '_') }}/{{ load_types }}"
     state: directory
     owner: "{{ username_on_the_host.stdout_lines[0] }}"
+
+- name: Create directory to store a permanent copy of these timestamps
+  file:
+    path: "{{ project_path }}/timestamps/{{ stressors | replace(',', '_') }}/{{ load_types }}"
+    state: directory
+    owner: "{{ username_on_the_host.stdout_lines[0] }}"
