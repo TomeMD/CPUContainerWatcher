@@ -1,0 +1,28 @@
+# Currently supported container engines: apptainer, docker (in the future)
+container_engine: apptainer
+singularity_command_alias: apptainer # singularity or apptainer (only relevant when using apptainer as container engine)
+
+# Monitoring node IP address
+monitoring_node_ip: 192.168.1.20
+
+# Target (monitored) node IP address
+target_node_ip: 192.168.1.30
+
+# MongoDB configuration
+mongodb_host: "{{ monitoring_node_ip }}"
+mongodb_port: 27017
+
+# InfluxDB configuration
+influxdb_host: "montoxo.des.udc.es"
+influxdb_token: "MyToken"
+influxdb_org: "MyOrg"
+influxdb_bucket: "compute2"
+
+# Stress tests workload
+workload: stress-system
+
+# If stress-system is used it can be configured here
+stressors: sysinfo
+load_types: all # Only relevant when using cpu as stressor
+stress_disk_bind: /scratch2
+other_options: "temp-path={{ stress_disk_bind }}"
