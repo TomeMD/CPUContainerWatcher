@@ -5,6 +5,9 @@
 module load gnu8
 module load openmpi4
 
+# If a STORE directory doesn't exist in your cluster, define it manually.
+# STORE=<dir-containing-this-project>
+
 PROJECT_DIR="${STORE}/ContainerPowerWatcher"
 SLURM_DIR="${PROJECT_DIR}/slurm"
 ANSIBLE_CONFIG_FILE="${PROJECT_DIR}/ansible/provisioning/config/config.yml"
