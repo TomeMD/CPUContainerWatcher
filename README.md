@@ -14,7 +14,7 @@ Modify `ansible/provisioning/config/config.yml` to set your environment. Then ru
 bash ./ansible/provisioning/scripts/start_all.sh
 ```
 
-Once the execution has finished (hours later) you can see the timestamps corresponding to each of the experiments executed under the `./timestamps` directory. The name of the directory depends on the stressors and type of load specified. For example, with the following configuration:
+Once the execution has finished you can see the timestamps corresponding to each of the experiments executed under the `./timestamps` directory. The name of the directory depends on the stressors and type of load specified. For example, with the following configuration:
 ```yaml
 # Stress tests workload
 workload: stress-system
@@ -27,13 +27,13 @@ The timestamps files will be stored at `./timestamps/cpu_sysinfo/all/`. Note tha
 
 
 ## Slurm
-You can run this project through slurm jobs. Under the `./slurm` directory you will find an example script to run this tool with 4 different configurations in an automated way. Run:
+As this project is intended to be run on two nodes, one monitoring node and one monitored (target) node, you can easily run this project on a cluster through slurm jobs. Under the `./slurm` directory you will find an example script to run this tool with 4 different configurations in an automated way. Run:
 
 ```shell
 sbatch -t HH:MM:SS -p <your-node-partition> -J <your-job-name> -o <your-log-file> ./slurm/stressJob.sh
 ```
 
 
-Afterwards you will only have to wait until the experiments are finished. All the metrics obtained will be stored as time series in the InfluxDB database you have previously specified and its corresponding timestamps under `./timestams` directory. 
+Afterwards you will only have to wait until the experiments are finished. All the metrics obtained will be stored as time series in the InfluxDB database you have previously specified and its corresponding timestamps under `./timestamps` directory. 
 
-*NOTE: If you use the default database, please use the bucket named `public`.*
+*NOTE: If you use the default provided database, please use the bucket named `public`.*
