@@ -30,7 +30,7 @@
     - name: Write start stress test timestamp
       lineinfile:
         path: "{{ timestamps_file }}"
-        line: "{{ dist_name }} STRESS-TEST (CORES = {{ current_cores }}) START: {{ now(utc=true,fmt='%d/%m/%Y %H:%M:%S%z') }}"
+        line: "{{ dist_name }} STRESS-TEST (CORES = {{ current_cores }}) START: {{ now(utc=true,fmt='%Y-%m-%d %H:%M:%S%z') }}+0000"
         create: yes
 
     - name: Run stress-system
@@ -46,13 +46,13 @@
     - name: Write stop stress test timestamp
       lineinfile:
         path: "{{ timestamps_file }}"
-        line: "{{ dist_name }} STRESS-TEST (CORES = {{ current_cores }}) STOP: {{ now(utc=true,fmt='%d/%m/%Y %H:%M:%S%z') }}"
+        line: "{{ dist_name }} STRESS-TEST (CORES = {{ current_cores }}) STOP: {{ now(utc=true,fmt='%Y-%m-%d %H:%M:%S%z') }}+0000"
         create: yes
 
     - name: Write start idle timestamp
       lineinfile:
         path: "{{ timestamps_file }}"
-        line: "{{ dist_name }} IDLE START: {{ now(utc=true,fmt='%d/%m/%Y %H:%M:%S%z') }}"
+        line: "{{ dist_name }} IDLE START: {{ now(utc=true,fmt='%Y-%m-%d %H:%M:%S%z') }}+0000"
         create: yes
 
     - name: Wait 30s to retrieve idle container metrics
@@ -62,7 +62,7 @@
     - name: Write stop idle timestamp
       lineinfile:
         path: "{{ timestamps_file }}"
-        line: "{{ dist_name }} IDLE START: {{ now(utc=true,fmt='%d/%m/%Y %H:%M:%S%z') }}"
+        line: "{{ dist_name }} IDLE START: {{ now(utc=true,fmt='%Y-%m-%d %H:%M:%S%z') }}+0000"
         create: yes
 
     - name: Stop stress-system

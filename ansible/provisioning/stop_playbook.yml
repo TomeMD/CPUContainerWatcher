@@ -25,6 +25,11 @@
     args:
       executable: /bin/bash
 
+  - name: get the username running the deploy
+    become: no
+    local_action: command whoami
+    register: username_on_the_host
+
   - name: Clean SmartWatts output directory
     file:
       state: "{{ item }}"

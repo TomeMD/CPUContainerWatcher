@@ -20,10 +20,10 @@ for CURRENT_CONFIG in "${CONFIGS[@]}"; do
   cp "${CURRENT_CONFIG_FILE}" "${ANSIBLE_CONFIG_FILE}"
 
   echo "Current config is: ${CURRENT_CONFIG_FILE}"
-  bash ./ansible/provisioning/scripts/start_all.sh
+  bash ${PROJECT_DIR}/ansible/provisioning/scripts/start_all.sh
   sleep 120 # Wait 2 minutes before stoping all
 
-  bash ./ansible/provisioning/scripts/stop_all.sh
+  bash ${PROJECT_DIR}/ansible/provisioning/scripts/stop_all.sh
   sleep 300 # Wait 5 minutes between workloads executions
 
 done
