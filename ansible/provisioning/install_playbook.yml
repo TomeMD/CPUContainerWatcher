@@ -30,5 +30,4 @@
       when: container_engine == 'apptainer'
     - import_tasks: tasks/install/target_node_setup.yml
     - import_tasks: tasks/install/stress-system_setup.yml
-    - import_tasks: tasks/install/stress-tests_setup.yml
     - import_tasks: tasks/install/hwpc-sensor_setup.yml

@@ -47,9 +47,9 @@
     - name: Copy timestamps file to project timestamps directory
       copy:
         src: "{{ timestamps_file }}"
-        dest: "{{ project_timestamps_copy }}"
+        dest: "{{ project_timestamps_file }}"
         owner: "{{ username_on_the_host.stdout_lines[0] }}"
 
   vars:
     - run_workload_file: "run_{{ workload }}.yml"
-    - experiment_duration: 120
+    - experiment_duration: 180

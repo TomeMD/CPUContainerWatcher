@@ -22,10 +22,12 @@
     - config/config.yml
 
   tasks:
+    - import_tasks: tasks/stress-tests/timestamps_setup.yml
+
     - include_tasks: tasks/stress-tests/run_experiments.yml
       vars:
         - dist_name: "{{ item }}"
         - distribution: "{{ hostvars[groups['target'].0].cores_distributions_dict[dist_name] }}"
-        - timestamps_file: "{{ timestamps_dir_base_path }}/{{ stressors | replace(',', '_') }}/{{ load_types }}/{{ item }}.timestamps"
-        - project_timestamps_copy: "{{ project_path }}//timestamps/{{ stressors | replace(',', '_') }}/{{ load_types }}/{{ item }}.timestamps"
+        - timestamps_file: "{{ timestamps_dir | trim | replace('\n', '') }}/{{ dist_name }}.timestamps"
+        - project_timestamps_file: "{{ project_timestamps_dir | trim | replace('\n', '') }}/{{ dist_name }}.timestamps"
       with_items: "{{ hostvars[groups['target'].0].cores_distributions_names }}"

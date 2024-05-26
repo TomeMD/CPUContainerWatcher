@@ -1,0 +1,38 @@
+- name: Get experiments date
+  set_fact:
+    experiments_date: "{{ now(utc=true,fmt='%Y_%m_%d_%H-%M-%S') }}"
+
+- name: Set stress tests timestamps directory
+  set_fact:
+    timestamps_dir: >-
+      {% if stressors == "cpu" %}
+        {{ timestamps_dir_base_path }}/{{ stressors | replace(',', '_') }}_{{ load_types | replace(',', '_') }}
+      {% else %}
+        {{ timestamps_dir_base_path }}/{{ stressors | replace(',', '_') }}
+      {% endif %}
+
+- name: Set project timestamps directory
+  set_fact:
+    project_timestamps_dir: >-
+      {% if stressors == "cpu" %}
+        {{ project_path }}/timestamps/{{ experiments_date }}/{{ stressors | replace(',', '_') }}_{{ load_types | replace(',', '_') }}
+      {% else %}
+        {{ project_path }}/timestamps/{{ experiments_date }}/{{ stressors | replace(',', '_') }}
+      {% endif %}
+
+- name: get the username running the deploy
+  become: no
+  local_action: command whoami
+  register: username_on_the_host
+
+- name: Create directory to store stress tests timestamps
+  file:
+    path: "{{ timestamps_dir | trim | replace('\n', '') }}/"
+    state: directory
+    owner: "{{ username_on_the_host.stdout_lines[0] }}"
+
+- name: Create directory to store a permanent copy of stress-test timestamps
+  file:
+    path: "{{ project_timestamps_dir | trim | replace('\n', '') }}/"
+    state: directory
+    owner: "{{ username_on_the_host.stdout_lines[0] }}"

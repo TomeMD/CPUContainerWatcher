@@ -24,7 +24,7 @@
 
     - name: Add especial options to stress-system for running iomix stressor
       set_fact:
-        stress_system_options: "--other {{ other_options }} -l {{ load }} -s {{ stressors }} --cpu-load-types {{ load_types }} -c {{ current_cores }} -t 2m"
+        stress_system_options: "--other {{ other_options }} -l {{ load }} -s {{ stressors }} --cpu-load-types {{ load_types }} -c {{ current_cores }} -t {{ experiment_duration }}"
       when: "'iomix' in stressors.split(',')"
 
     - name: Write start stress test timestamp
