@@ -8,6 +8,7 @@ from src.apptainer.ApptainerHandler import ApptainerHandler
 from src.containers_socket.ContainersSender import ContainersSender
 from src.psutil.PSUtilHandler import PSUtilHandler
 from src.utils.MyUtils import MyUtils
+from src.utils.DataBatch import DataBatch
 
 # Configuration
 POLLING_FREQUENCY = 2
@@ -24,8 +25,7 @@ class UsageSender(Sender):
     def __init__(self, influxdb_bucket, monitoring_node_ip, cgroup_base_path=None):
         super().__init__(influxdb_bucket, "usage_sender")
         self.valid_targets = []
-        self.current_batch = []
-        self.current_batch_length = 0
+        self.data_batch = DataBatch(data_type=str)
         self.monitoring_node_ip = monitoring_node_ip
         self.apptainer_handler = ApptainerHandler(privileged=True)
         self.containers_sender = ContainersSender(self.monitoring_node_ip, self.logger)
@@ -39,18 +39,7 @@ class UsageSender(Sender):
             self.logger.error(msg)
             raise FileNotFoundError(msg)
 
-    def __add_data_to_batch(self, data):
-        self.current_batch.append(data)
-        self.current_batch_length += 1
-
-    def __clear_current_batch(self):
-        self.current_batch.clear()
-        self.current_batch_length = 0
-
-    def get_batch_length(self):
-        return self.current_batch_length
-
-    def read_cgroup_file_stat(self, target_dir):
+    def __read_cgroup_file_stat(self, target_dir):
         path = f"{target_dir}/cpuacct.stat"
         values = {"user": None, "system": None}
         try:
@@ -66,14 +55,14 @@ class UsageSender(Sender):
         finally:
             return values
 
-    def compute_delay(self, t_start, t_stop):
+    def __compute_delay(self, t_start, t_stop):
         delay = (t_start - t_stop) / 1e9
         if delay > POLLING_FREQUENCY:
             self.logger.warning(f"High delay ({delay}) causing negative sleep times. Waiting until the next {POLLING_FREQUENCY}s cycle")
             delay = delay % POLLING_FREQUENCY
         return delay
 
-    def update_valid_targets(self, containers):
+    def __update_valid_targets(self, containers):
         new_targets = []
         for container in containers:
             target_dir = f"{self.cgroup_base_path}/apptainer-{container['pid']}.scope"
@@ -82,7 +71,7 @@ class UsageSender(Sender):
         new_targets.append({"name": "global", "dir": None})
         self.valid_targets = new_targets
 
-    def setup_counters(self, counter_type):
+    def __setup_counters(self, counter_type):
         if counter_type != "start" and counter_type != "stop":
             raise ValueError("Invalid type. Must be 'start' or 'stop'")
 
@@ -91,14 +80,14 @@ class UsageSender(Sender):
                 target[f"cpu_times_{counter_type}"] = PSUtilHandler.get_cpu_times()
             else:
                 target[counter_type] = time.perf_counter_ns()
-                tick_values = self.read_cgroup_file_stat(target["dir"])
+                tick_values = self.__read_cgroup_file_stat(target["dir"])
                 if tick_values["user"] is None or tick_values["system"] is None:
                     self.valid_targets.remove(target)
                 else:
                     target[f"user_ticks_{counter_type}"] = tick_values["user"]
                     target[f"sys_ticks_{counter_type}"] = tick_values["system"]
 
-    def process_targets_data(self, timestamp):
+    def __process_targets_data(self, timestamp):
         for target in self.valid_targets:
             if target["name"] == "global":
                 usages = PSUtilHandler.get_usages_from_deltas(target["cpu_times_start"], target["cpu_times_stop"])
@@ -110,7 +99,7 @@ class UsageSender(Sender):
                 system_usage = ((target["sys_ticks_stop"] - target["sys_ticks_start"]) * NS_PER_TICK / elapsed_time) * 100
 
             data = f"usage,host={target['name']} user={user_usage},system={system_usage} {timestamp}"
-            self.__add_data_to_batch(data)
+            self.data_batch.add_data(data)
 
     def send_usage(self):
         # Create log files and set logger
@@ -132,32 +121,32 @@ class UsageSender(Sender):
                     previous_containers = current_containers.copy()
 
                 # Filter and initialize valid targets to process
-                self.update_valid_targets(current_containers)
+                self.__update_valid_targets(current_containers)
 
                 # Setup start counters for each target
-                self.setup_counters(counter_type="start")
+                self.__setup_counters(counter_type="start")
 
                 t_start = time.perf_counter_ns()
 
                 # This value represents the total delay since t_stop from previous iteration was computed
-                delay = self.compute_delay(t_start, t_stop)
+                delay = self.__compute_delay(t_start, t_stop)
                 time.sleep(POLLING_FREQUENCY - delay)
 
                 t_stop = time.perf_counter_ns()
                 timestamp = int(datetime.now(timezone.utc).timestamp() * 1e9)
 
                 # Setup stop counters for each target
-                self.setup_counters(counter_type="stop")
+                self.__setup_counters(counter_type="stop")
 
                 # Process target data
-                self.process_targets_data(timestamp)
-                self.logger.info(f"Current batch size is {self.get_batch_length()}. "
+                self.__process_targets_data(timestamp)
+                self.logger.info(f"Current batch size is {self.data_batch.get_length()}. "
                                  f"Last iteration delay: {delay} seconds")
 
-                # If current batch has at least MIN_BATCH_SIZE data points, send and clear the batch
-                if self.get_batch_length() >= MIN_BATCH_SIZE:
-                    self.send_data_to_influxdb(self.current_batch)
-                    self.__clear_current_batch()
+                # If data batch has at least MIN_BATCH_SIZE data points, send and clear the batch
+                if self.data_batch.get_length() >= MIN_BATCH_SIZE:
+                    self.send_data_to_influxdb(self.data_batch.get_data())
+                    self.data_batch.clear_data()
 
         except Exception as e:
             self.logger.error(f"Unexpected error: {str(e)}")
