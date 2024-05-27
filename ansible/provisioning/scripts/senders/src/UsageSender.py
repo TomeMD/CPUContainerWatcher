@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from src.Sender import Sender
 from src.apptainer.ApptainerHandler import ApptainerHandler
 from src.containers_socket.ContainersSender import ContainersSender
+from src.psutil.PSUtilHandler import PSUtilHandler
 from src.utils.MyUtils import MyUtils
 
 # Configuration
@@ -78,6 +79,7 @@ class UsageSender(Sender):
             target_dir = f"{self.cgroup_base_path}/apptainer-{container['pid']}.scope"
             if os.path.isdir(target_dir) and os.access(target_dir, os.R_OK):
                 new_targets.append({"name": container["name"], "dir": target_dir})
+        new_targets.append({"name": "global", "dir": None})
         self.valid_targets = new_targets
 
     def setup_counters(self, counter_type):
@@ -85,20 +87,27 @@ class UsageSender(Sender):
             raise ValueError("Invalid type. Must be 'start' or 'stop'")
 
         for target in self.valid_targets:
-            target[counter_type] = time.perf_counter_ns()
-            tick_values = self.read_cgroup_file_stat(target["dir"])
-            if tick_values["user"] is None or tick_values["system"] is None:
-                self.valid_targets.remove(target)
+            if target["name"] == "global":
+                target[f"cpu_times_{counter_type}"] = PSUtilHandler.get_cpu_times()
             else:
-                target[f"user_ticks_{counter_type}"] = tick_values["user"]
-                target[f"sys_ticks_{counter_type}"] = tick_values["system"]
-
+                target[counter_type] = time.perf_counter_ns()
+                tick_values = self.read_cgroup_file_stat(target["dir"])
+                if tick_values["user"] is None or tick_values["system"] is None:
+                    self.valid_targets.remove(target)
+                else:
+                    target[f"user_ticks_{counter_type}"] = tick_values["user"]
+                    target[f"sys_ticks_{counter_type}"] = tick_values["system"]
 
     def process_targets_data(self, timestamp):
         for target in self.valid_targets:
-            elapsed_time = target["stop"] - target["start"]
-            user_usage = ((target["user_ticks_stop"] - target["user_ticks_start"]) * NS_PER_TICK / elapsed_time) * 100
-            system_usage = ((target["sys_ticks_stop"] - target["sys_ticks_start"]) * NS_PER_TICK / elapsed_time) * 100
+            if target["name"] == "global":
+                usages = PSUtilHandler.get_usages_from_deltas(target["cpu_times_start"], target["cpu_times_stop"])
+                user_usage = usages["user"]
+                system_usage = usages["system"]
+            else:
+                elapsed_time = target["stop"] - target["start"]
+                user_usage = ((target["user_ticks_stop"] - target["user_ticks_start"]) * NS_PER_TICK / elapsed_time) * 100
+                system_usage = ((target["sys_ticks_stop"] - target["sys_ticks_start"]) * NS_PER_TICK / elapsed_time) * 100
 
             data = f"usage,host={target['name']} user={user_usage},system={system_usage} {timestamp}"
             self.__add_data_to_batch(data)
@@ -144,8 +153,6 @@ class UsageSender(Sender):
                 self.process_targets_data(timestamp)
                 self.logger.info(f"Current batch size is {self.get_batch_length()}. "
                                  f"Last iteration delay: {delay} seconds")
-
-
 
                 # If current batch has at least MIN_BATCH_SIZE data points, send and clear the batch
                 if self.get_batch_length() >= MIN_BATCH_SIZE:
