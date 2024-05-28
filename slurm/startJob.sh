@@ -7,6 +7,7 @@ TIMESTAMPS_DIR="${PROJECT_DIR}/timestamps/$(date -u +%Y_%m_%d_%H-%M-%S)"
 ANSIBLE_CONFIG_FILE="${PROJECT_DIR}/ansible/provisioning/config/config.yml"
 ANSIBLE_VARS_FILE="${PROJECT_DIR}/ansible/provisioning/vars/main.yml"
 
+mkdir -p "${TIMESTAMPS_DIR}"
 echo "Setting up base directory for project timestamps: ${TIMESTAMPS_DIR}"
 sed -i "s|^project_timestamps_base_dir: .*|project_timestamps_base_dir: \"${TIMESTAMPS_DIR}\"|" "${ANSIBLE_VARS_FILE}"
 

@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from src.Sender import Sender
 from src.apptainer.ApptainerHandler import ApptainerHandler
 from src.containers_socket.ContainersSender import ContainersSender
-from src.psutil.PSUtilHandler import PSUtilHandler
+from src.utils.PSUtilHandler import PSUtilHandler
 from src.utils.MyUtils import MyUtils
 from src.utils.DataBatch import DataBatch
 
@@ -89,17 +89,25 @@ class UsageSender(Sender):
 
     def __process_targets_data(self, timestamp):
         for target in self.valid_targets:
-            if target["name"] == "global":
-                usages = PSUtilHandler.get_usages_from_deltas(target["cpu_times_start"], target["cpu_times_stop"])
-                user_usage = usages["user"]
-                system_usage = usages["system"]
-            else:
-                elapsed_time = target["stop"] - target["start"]
-                user_usage = ((target["user_ticks_stop"] - target["user_ticks_start"]) * NS_PER_TICK / elapsed_time) * 100
-                system_usage = ((target["sys_ticks_stop"] - target["sys_ticks_start"]) * NS_PER_TICK / elapsed_time) * 100
+            user_usage = None
+            system_usage = None
+            try:
+                if target["name"] == "global":
+                    usages = PSUtilHandler.get_usages_from_deltas(target["cpu_times_start"], target["cpu_times_stop"])
+                    user_usage = usages["user"]
+                    system_usage = usages["system"]
 
-            data = f"usage,host={target['name']} user={user_usage},system={system_usage} {timestamp}"
-            self.data_batch.add_data(data)
+                else:
+                    elapsed_time = target["stop"] - target["start"]
+                    user_usage = ((target["user_ticks_stop"] - target["user_ticks_start"]) * NS_PER_TICK / elapsed_time) * 100
+                    system_usage = ((target["sys_ticks_stop"] - target["sys_ticks_start"]) * NS_PER_TICK / elapsed_time) * 100
+
+            except KeyError as e:
+                self.logger.error(f"Error while processing data for {target['name']}: {str(e)}")
+                
+            else:
+                data = f"usage,host={target['name']} user={user_usage},system={system_usage} {timestamp}"
+                self.data_batch.add_data(data)
 
     def send_usage(self):
         # Create log files and set logger

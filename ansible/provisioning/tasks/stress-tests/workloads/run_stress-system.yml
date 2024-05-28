@@ -35,7 +35,7 @@
 
     - name: Run stress-system
       delegate_to: "{{ groups[ 'target' ].0 }}"
-      shell: "sudo {{ singularity_command_alias }} instance start -C --bind {{ stress_disk_bind }}:/{{ stress_disk_bind }} {{ stress_system_path }}/container/stress.sif stress {{ stress_system_options }}"
+      shell: "sudo {{ singularity_command_alias }} instance start -C --bind {{ stress_disk_bind }}:/{{ stress_disk_bind }} {{ stress_system_path }}/container/stress.sif {{ container_name }} {{ stress_system_options }}"
       args:
           executable: /bin/bash
 
@@ -67,7 +67,7 @@
 
     - name: Stop stress-system
       delegate_to: "{{ groups[ 'target' ].0 }}"
-      shell: "sudo {{ singularity_command_alias }} instance stop stress"
+      shell: "sudo {{ singularity_command_alias }} instance stop {{ container_name }}"
       args:
         executable: /bin/bash
 
@@ -79,3 +79,4 @@
   vars:
     - current_cores: "{{ distribution[0:last_position | int] | join(',') }}"
     - smartwatts_output: "{{ smartwatts_path }}/output"
+    - container_name: "container"

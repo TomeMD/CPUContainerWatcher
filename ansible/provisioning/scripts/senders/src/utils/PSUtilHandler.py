@@ -28,9 +28,12 @@
 
 import psutil
 import platform
+import multiprocessing
 
 USAGE_FIELDS = ["user", "system"]
 OPERATING_SYSTEM = platform.system()
+NUM_CORES = multiprocessing.cpu_count()
+MAX_USAGE = NUM_CORES * 100
 
 
 class PSUtilHandler:
@@ -88,9 +91,10 @@ class PSUtilHandler:
         # fraction because cpu times are integers)
         scale = 100.0 / max(1, total_delta)
         for field in USAGE_FIELDS:
-            field_perc =  deltas[field] * scale
+            field_perc =  deltas[field] * scale * NUM_CORES
             field_perc = round(field_perc, 1)
-            # make sure we don't return negative values or values over 100%
-            field_perc = min(max(0.0, field_perc), 100.0)
+            # make sure we don't return negative values or values over MAX_USAGE
+            field_perc = min(max(0.0, field_perc), MAX_USAGE)
             usages[field] = field_perc
+        
         return usages
