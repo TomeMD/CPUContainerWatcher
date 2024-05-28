@@ -1,23 +1,19 @@
-- name: Get experiments date
-  set_fact:
-    experiments_date: "{{ now(utc=true,fmt='%Y_%m_%d_%H-%M-%S') }}"
-
 - name: Set stress tests timestamps directory
   set_fact:
     timestamps_dir: >-
-      {% if stressors == "cpu" %}
-        {{ timestamps_dir_base_path }}/{{ stressors | replace(',', '_') }}_{{ load_types | replace(',', '_') }}
+      {% if 'cpu' in stressors.split(',') %}
+        {{ timestamps_base_dir }}/{{ stressors | replace(',', '_') }}_{{ load_types | replace(',', '_') }}
       {% else %}
-        {{ timestamps_dir_base_path }}/{{ stressors | replace(',', '_') }}
+        {{ timestamps_base_dir }}/{{ stressors | replace(',', '_') }}
       {% endif %}
 
 - name: Set project timestamps directory
   set_fact:
     project_timestamps_dir: >-
-      {% if stressors == "cpu" %}
-        {{ project_path }}/timestamps/{{ experiments_date }}/{{ stressors | replace(',', '_') }}_{{ load_types | replace(',', '_') }}
+      {% if 'cpu' in stressors.split(',') %}
+        {{ project_timestamps_base_dir }}/{{ stressors | replace(',', '_') }}_{{ load_types | replace(',', '_') }}
       {% else %}
-        {{ project_path }}/timestamps/{{ experiments_date }}/{{ stressors | replace(',', '_') }}
+        {{ project_timestamps_base_dir }}/{{ stressors | replace(',', '_') }}
       {% endif %}
 
 - name: get the username running the deploy

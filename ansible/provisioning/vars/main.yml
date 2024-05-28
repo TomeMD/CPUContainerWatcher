@@ -10,7 +10,7 @@ mongodb_path: "{{ monitoring_path }}/mongodb"
 mongodb_data_path: "{{ monitoring_path }}/mongodb/data"
 smartwatts_path: "{{ monitoring_path }}/smartwatts"
 senders_path: "{{ monitoring_path }}/senders"
-timestamps_dir_base_path: "{{ installation_path }}/monitoring/timestamps"
+timestamps_base_dir: "{{ installation_path }}/monitoring/timestamps"
 
 # Target node
 target_path: "{{ installation_path }}/target"
@@ -18,4 +18,7 @@ hwpc_sensor_path: "{{ target_path }}/hwpc-sensor"
 hwpc_sensor_reporting_path : /tmp/powerapi-sensor-reporting
 stress_system_path: "{{ target_path }}/stress-system"
 stress_tests_path: "{{ target_path }}/stress-tests"
+
+# Directory to store timestamps (Automatically updated by start_all.sh)
+project_timestamps_base_dir: "{{ project_path }}/timestamps"
 
