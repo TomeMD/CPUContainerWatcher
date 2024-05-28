@@ -21,7 +21,7 @@
       - power_sender
   
   - name: Stop monitoring node apptainer containers
-    shell: "sudo apptainer instance stop --all"
+    shell: "apptainer instance stop --all"
     args:
       executable: /bin/bash
 
