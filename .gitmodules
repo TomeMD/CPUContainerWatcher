@@ -1,3 +1,0 @@
-[submodule "tools/stress-system"]
-	path = tools/stress-system
-	url = https://github.com/TomeMD/stress-system.git
